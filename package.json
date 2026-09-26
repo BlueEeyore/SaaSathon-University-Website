@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
+    "test:identity": "tsx scripts/test-identity.ts",
     "test:integration": "tsx scripts/test-integration.ts",
     "db:start": "supabase start",
     "db:reset": "supabase db reset --local",
