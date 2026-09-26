@@ -3,7 +3,7 @@
 Supersedes the original feature sketch. Feature *intent* is preserved in "Product scope";
 everything under "Decisions" is settled and should not be re-litigated during implementation.
 
-Status: **in progress.** Foundations, identity/classes, and the upload/transcription/player slice are implemented. Highlights, discussion and analytics remain ahead.
+Status: **in progress.** Foundations, identity/classes, upload/transcription, and transcript discussions with contextual AI replies are implemented. Analytics remain ahead.
 
 ---
 
@@ -296,10 +296,9 @@ feature over layers of abstractions.
 
 ### Phase 3 — Highlights and comments
 
-- Migration: `highlights`, `comments`.
-- Select transcript text to highlight, or highlight a timestamp range with no selection.
-- Comment threads with replies; jump video to a highlight or comment.
-- Visibility: all students in the class plus the class lecturer.
+- **DONE (migration pending local database access).** Migration `20261002000000_transcript_discussion.sql` adds class-readable transcript highlights and threaded comments with member-only RLS.
+- **DONE.** Select word-timed transcript text to highlight it, comment, and reply in a shared side panel. Timestamp controls seek the video and the active transcript follows playback.
+- **DONE.** Members can ask GPT-6 Luna about a highlighted passage. The server sends only the passage and nearby transcript, caps the response, and adds the answer to the class-visible thread. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
 
 ### Phase 4 — Analytics
 
@@ -321,8 +320,7 @@ feature over layers of abstractions.
 ### Phase 5 — Phase 2 features
 
 CSV roster import (a committed deliverable, not optional — the table and claiming mechanism are
-built in Phase 1, so this phase is only the upload-and-parse UI), AI overview, class-wide AI Q&A
-(start with keyword search, add pgvector later), real Moodle wiring.
+built in Phase 1, so this phase is only the upload-and-parse UI), AI overview, real Moodle wiring.
 
 ---
 

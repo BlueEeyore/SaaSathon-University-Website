@@ -70,6 +70,18 @@ export type Database = {
           },
         ]
       }
+      transcript_highlights: {
+        Row: { created_at: string; end_ms: number; id: string; lecture_id: string; quote: string; start_ms: number; user_id: string }
+        Insert: { created_at?: string; end_ms: number; id?: string; lecture_id: string; quote: string; start_ms: number; user_id: string }
+        Update: { created_at?: string; end_ms?: number; id?: string; lecture_id?: string; quote?: string; start_ms?: number; user_id?: string }
+        Relationships: []
+      }
+      transcript_comments: {
+        Row: { author_id: string; body: string; created_at: string; end_ms: number | null; highlight_id: string | null; id: string; lecture_id: string; parent_id: string | null; start_ms: number | null }
+        Insert: { author_id: string; body: string; created_at?: string; end_ms?: number | null; highlight_id?: string | null; id?: string; lecture_id: string; parent_id?: string | null; start_ms?: number | null }
+        Update: { author_id?: string; body?: string; created_at?: string; end_ms?: number | null; highlight_id?: string | null; id?: string; lecture_id?: string; parent_id?: string | null; start_ms?: number | null }
+        Relationships: []
+      }
       class_roster: {
         Row: {
           claimed_at: string | null
@@ -345,6 +357,10 @@ export type Database = {
       claim_roster_memberships: { Args: never; Returns: number }
       create_class: {
         Args: { class_description?: string; class_title: string }
+        Returns: string
+      }
+      create_transcript_thread: {
+        Args: { first_comment: string; selection_end_ms: number; selection_quote: string; selection_start_ms: number; target_lecture: string }
         Returns: string
       }
       is_class_lecturer: { Args: { target_class: string }; Returns: boolean }

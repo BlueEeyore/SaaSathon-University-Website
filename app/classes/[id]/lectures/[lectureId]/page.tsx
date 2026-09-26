@@ -39,6 +39,16 @@ export default async function LecturePage({
     : { data: null };
   const parsedSegments = transcriptSegmentsSchema.safeParse(transcript?.segments);
   const segments = parsedSegments.success ? parsedSegments.data : [];
+  const [{ data: highlights }, { data: comments }] = segments.length
+    ? await Promise.all([
+      supabase.from("transcript_highlights").select("id, lecture_id, start_ms, end_ms, quote, user_id").eq("lecture_id", lectureId).order("start_ms"),
+      supabase.from("transcript_comments").select("id, lecture_id, highlight_id, parent_id, author_id, body, created_at").eq("lecture_id", lectureId).order("created_at"),
+    ])
+    : [{ data: [] }, { data: [] }];
+  const profileIds = [...new Set((comments ?? []).map((comment) => comment.author_id))];
+  const { data: profiles } = profileIds.length
+    ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", profileIds)
+    : { data: [] };
 
   return <div className="min-h-screen bg-[#f5f8fb]">
     <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/90 backdrop-blur-xl">
@@ -58,6 +68,9 @@ export default async function LecturePage({
         title={lecture.title}
         segments={segments}
         language={transcript?.language ?? "en"}
+        highlights={highlights ?? []}
+        comments={comments ?? []}
+        profiles={profiles ?? []}
       /> : <div className="mx-auto max-w-2xl space-y-4">
         <LectureProcessingStatus status={lecture.status} />
         {lecture.status === "failed" && lecture.error_message && <Card><CardContent className="p-5 text-sm text-destructive">{lecture.error_message}</CardContent></Card>}

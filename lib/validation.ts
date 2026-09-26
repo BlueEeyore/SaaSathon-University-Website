@@ -155,6 +155,29 @@ export const commentSchema = z
 
 export const commentIdSchema = z.object({ id: idSchema });
 
+export const transcriptThreadSchema = z.object({
+  lectureId: idSchema,
+  startMs: milliseconds,
+  endMs: milliseconds,
+  quote: z.string().trim().min(1).max(600),
+  body: z.string().trim().min(1, "Write something first.").max(4000, "Keep comments under 4,001 characters."),
+}).refine((value) => value.endMs > value.startMs, {
+  message: "Select a valid passage from the transcript.",
+  path: ["endMs"],
+});
+
+export const transcriptReplySchema = z.object({
+  lectureId: idSchema,
+  parentId: idSchema,
+  body: z.string().trim().min(1, "Write something first.").max(4000, "Keep comments under 4,001 characters."),
+});
+
+export const transcriptQuestionSchema = z.object({
+  lectureId: idSchema,
+  parentId: idSchema,
+  question: z.string().trim().min(1, "Write a question first.").max(1200, "Keep questions under 1,201 characters."),
+});
+
 // --- Engagement events ---
 
 export const watchEventTypeSchema = z.enum([
