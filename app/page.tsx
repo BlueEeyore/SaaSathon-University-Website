@@ -175,7 +175,7 @@ export default function Home() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1f70b7]">
             LEARN IN CONTEXT
           </p>
-          <h2 className="mt-5 text-[clamp(3rem,8.5vw,8rem)] font-semibold leading-[0.96] tracking-[-0.075em]">
+          <h2 className="mt-5 text-[clamp(2.75rem,7.5vw,7rem)] font-semibold leading-[0.96] tracking-[-0.075em]">
             A lecture is more than a recording.
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#607184] sm:text-lg sm:leading-8">
