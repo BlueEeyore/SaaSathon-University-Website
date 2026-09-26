@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Highlight = { id: string; lecture_id: string; start_ms: number; end_ms: number; quote: string; user_id: string };
 type Comment = { id: string; lecture_id: string; highlight_id: string | null; parent_id: string | null; author_id: string; body: string; created_at: string };
+type AiQuestion = { id: string; lecture_id: string; highlight_id: string; user_id: string; question: string; answer: string; created_at: string };
 type Person = { user_id: string; full_name: string; email: string };
 
 export function LecturePlayer({
@@ -16,6 +17,7 @@ export function LecturePlayer({
   language,
   highlights,
   comments,
+  aiQuestions,
   profiles,
 }: {
   lectureId: string;
@@ -24,6 +26,7 @@ export function LecturePlayer({
   language: string;
   highlights: Highlight[];
   comments: Comment[];
+  aiQuestions: AiQuestion[];
   profiles: Person[];
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -76,6 +79,7 @@ export function LecturePlayer({
       segments={segments}
       highlights={highlights}
       comments={comments}
+      aiQuestions={aiQuestions}
       profiles={profiles}
       activeIndex={activeIndex}
       onSeek={seekTo}

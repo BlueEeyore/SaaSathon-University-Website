@@ -39,13 +39,17 @@ export default async function LecturePage({
     : { data: null };
   const parsedSegments = transcriptSegmentsSchema.safeParse(transcript?.segments);
   const segments = parsedSegments.success ? parsedSegments.data : [];
-  const [{ data: highlights }, { data: comments }] = segments.length
+  const [{ data: highlights }, { data: comments }, { data: aiQuestions }] = segments.length
     ? await Promise.all([
       supabase.from("transcript_highlights").select("id, lecture_id, start_ms, end_ms, quote, user_id").eq("lecture_id", lectureId).order("start_ms"),
       supabase.from("transcript_comments").select("id, lecture_id, highlight_id, parent_id, author_id, body, created_at").eq("lecture_id", lectureId).order("created_at"),
+      supabase.from("transcript_ai_questions").select("id, lecture_id, highlight_id, user_id, question, answer, created_at").eq("lecture_id", lectureId).order("created_at", { ascending: false }),
     ])
-    : [{ data: [] }, { data: [] }];
-  const profileIds = [...new Set((comments ?? []).map((comment) => comment.author_id))];
+    : [{ data: [] }, { data: [] }, { data: [] }];
+  const profileIds = [...new Set([
+    ...(comments ?? []).map((comment) => comment.author_id),
+    ...(aiQuestions ?? []).map((question) => question.user_id),
+  ])];
   const { data: profiles } = profileIds.length
     ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", profileIds)
     : { data: [] };
@@ -70,6 +74,7 @@ export default async function LecturePage({
         language={transcript?.language ?? "en"}
         highlights={highlights ?? []}
         comments={comments ?? []}
+        aiQuestions={aiQuestions ?? []}
         profiles={profiles ?? []}
       /> : <div className="mx-auto max-w-2xl space-y-4">
         <LectureProcessingStatus status={lecture.status} />

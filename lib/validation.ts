@@ -174,8 +174,12 @@ export const transcriptReplySchema = z.object({
 
 export const transcriptQuestionSchema = z.object({
   lectureId: idSchema,
-  parentId: idSchema,
+  startMs: milliseconds,
+  endMs: milliseconds,
   question: z.string().trim().min(1, "Write a question first.").max(1200, "Keep questions under 1,201 characters."),
+}).refine((value) => value.endMs > value.startMs, {
+  message: "Select a valid passage from the transcript.",
+  path: ["endMs"],
 });
 
 // --- Engagement events ---

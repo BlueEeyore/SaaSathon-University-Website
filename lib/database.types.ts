@@ -82,6 +82,12 @@ export type Database = {
         Update: { author_id?: string; body?: string; created_at?: string; end_ms?: number | null; highlight_id?: string | null; id?: string; lecture_id?: string; parent_id?: string | null; start_ms?: number | null }
         Relationships: []
       }
+      transcript_ai_questions: {
+        Row: { answer: string; created_at: string; highlight_id: string; id: string; lecture_id: string; question: string; user_id: string }
+        Insert: { answer: string; created_at?: string; highlight_id: string; id?: string; lecture_id: string; question: string; user_id: string }
+        Update: { answer?: string; created_at?: string; highlight_id?: string; id?: string; lecture_id?: string; question?: string; user_id?: string }
+        Relationships: []
+      }
       class_roster: {
         Row: {
           claimed_at: string | null
@@ -361,6 +367,10 @@ export type Database = {
       }
       create_transcript_thread: {
         Args: { first_comment: string; selection_end_ms: number; selection_quote: string; selection_start_ms: number; target_lecture: string }
+        Returns: string
+      }
+      create_transcript_ai_question: {
+        Args: { ai_answer: string; selection_end_ms: number; selection_quote: string; selection_start_ms: number; student_question: string; target_lecture: string }
         Returns: string
       }
       is_class_lecturer: { Args: { target_class: string }; Returns: boolean }

@@ -176,6 +176,7 @@ form data.
 | `transcription_jobs` | `lecture_id`, `status`, `attempts`, `error`, `claimed_at` | The queue. Service-role only, claimed atomically through a `skip locked` RPC. |
 | `highlights` | `lecture_id`, `user_id`, `start_ms`, `end_ms`, `quote`, `segment_indexes` | `quote` keeps the highlight meaningful and survives transcript re-rendering. |
 | `comments` | `lecture_id`, `highlight_id?`, `parent_id?`, `author_id`, `body`, `start_ms?`, `end_ms?` | `parent_id` gives threading. |
+| `transcript_ai_questions` | `lecture_id`, `highlight_id`, `user_id`, `question`, `answer` | Class-visible AI Q&A, stored separately from comment threads. |
 | `watch_events` | `lecture_id`, `user_id`, `session_id`, `type`, `position_ms`, `duration_ms`, `watched_ms` | High volume. Insert-only. Students insert their own; **not** directly selectable by lecturers. |
 
 ### Enrollment: join code and roster
@@ -296,9 +297,9 @@ feature over layers of abstractions.
 
 ### Phase 3 — Highlights and comments
 
-- **DONE.** Migration `20261002000000_transcript_discussion.sql` adds class-readable transcript highlights and threaded comments with member-only RLS; applied to the local database without a reset.
+- **DONE.** Migrations `20261002000000_transcript_discussion.sql` and `20261003000000_transcript_ai_questions.sql` add member-readable transcript highlights, comment threads, and separate class-visible AI Q&A; both applied locally without a reset.
 - **DONE.** Select word-timed transcript text to highlight it, comment, and reply in a shared side panel. Timestamp controls seek the video and the active transcript follows playback.
-- **DONE.** Members can ask GPT-6 Luna about a highlighted passage. The server sends only the passage and nearby transcript, caps the response, and adds the answer to the class-visible thread. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
+- **DONE.** From a selected passage, members choose either Comment or Ask AI. AI questions and answers are saved separately from comment threads, visible to the class, and use only the selected passage plus nearby transcript. Responses are capped. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
 
 ### Phase 4 — Analytics
 

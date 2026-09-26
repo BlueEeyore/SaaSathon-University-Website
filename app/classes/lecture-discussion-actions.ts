@@ -52,31 +52,35 @@ export async function replyToTranscriptThread(_: FormState, form: FormData): Pro
 export async function askAboutTranscript(_: FormState, form: FormData): Promise<FormState> {
   const input = transcriptQuestionSchema.safeParse({
     lectureId: form.get("lectureId"),
-    parentId: form.get("parentId"),
+    startMs: Number(form.get("startMs")),
+    endMs: Number(form.get("endMs")),
     question: form.get("question"),
   });
   if (!input.success) return { error: input.error.issues[0]?.message ?? "Check your question." };
 
-  const { supabase, userId } = await requireUser();
+  const { supabase } = await requireUser();
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { error: "AI questions aren’t configured yet. Add OPENAI_API_KEY to .env.local and restart the app." };
 
-  const [{ data: parent }, { data: transcript }] = await Promise.all([
-    supabase.from("transcript_comments").select("id, lecture_id, highlight_id, parent_id").eq("id", input.data.parentId).eq("lecture_id", input.data.lectureId).maybeSingle(),
-    supabase.from("transcripts").select("segments").eq("lecture_id", input.data.lectureId).maybeSingle(),
-  ]);
-  if (!parent || parent.parent_id || !transcript) return { error: "That discussion is no longer available." };
-  if (!parent.highlight_id) return { error: "AI questions are available for transcript highlights." };
-  const { data: highlight } = await supabase.from("transcript_highlights")
-    .select("start_ms, end_ms, quote")
-    .eq("id", parent.highlight_id)
+  const { data: transcript } = await supabase.from("transcripts")
+    .select("segments")
     .eq("lecture_id", input.data.lectureId)
     .maybeSingle();
+  if (!transcript) return { error: "The transcript passage is unavailable." };
   const parsed = transcriptSegmentsSchema.safeParse(transcript.segments);
-  if (!highlight || !parsed.success) return { error: "The transcript passage is unavailable." };
+  if (!parsed.success) return { error: "The transcript passage is unavailable." };
+
+  const selectedSegments = parsed.data.filter((segment) =>
+    segment.end_ms > input.data.startMs && segment.start_ms < input.data.endMs,
+  );
+  const selectedWords = selectedSegments.flatMap((segment) =>
+    segment.words.filter((word) => word.end_ms > input.data.startMs && word.start_ms < input.data.endMs).map((word) => word.w),
+  ).join("").trim();
+  const selectedPassage = (selectedWords || selectedSegments.map((segment) => segment.text).join(" ")).trim().slice(0, 600);
+  if (!selectedPassage) return { error: "The selected transcript passage is unavailable." };
 
   const relevant = parsed.data
-    .filter((segment) => segment.end_ms >= highlight.start_ms - 15000 && segment.start_ms <= highlight.end_ms + 15000)
+    .filter((segment) => segment.end_ms >= input.data.startMs - 15000 && segment.start_ms <= input.data.endMs + 15000)
     .map((segment) => segment.text)
     .join(" ")
     .slice(0, 7000);
@@ -89,7 +93,7 @@ export async function askAboutTranscript(_: FormState, form: FormData): Promise<
       body: JSON.stringify({
         model,
         instructions: "You are a helpful teaching assistant. Answer the student's question using the lecture excerpt. Be accurate and concise. If the excerpt does not contain enough information, say so. Do not invent details. Keep your answer below 350 words.",
-        input: `Selected passage (${Math.floor(highlight.start_ms / 1000)}s):\n${highlight.quote}\n\nNearby lecture transcript:\n${relevant}\n\nStudent question:\n${input.data.question}`,
+        input: `Selected passage (${Math.floor(input.data.startMs / 1000)}s):\n${selectedPassage}\n\nNearby lecture transcript:\n${relevant}\n\nStudent question:\n${input.data.question}`,
         reasoning: { effort: "low" },
         max_output_tokens: 500,
         store: false,
@@ -110,13 +114,15 @@ export async function askAboutTranscript(_: FormState, form: FormData): Promise<
   }
   if (!answer || answer.length > 2700) return { error: "AI returned an empty or overly long answer. Please try again." };
 
-  const { error } = await supabase.from("transcript_comments").insert({
-    lecture_id: input.data.lectureId,
-    parent_id: parent.id,
-    author_id: userId,
-    body: `[AI answer]\nQuestion: ${input.data.question}\n\nAnswer: ${answer}`,
+  const { error } = await supabase.rpc("create_transcript_ai_question", {
+    target_lecture: input.data.lectureId,
+    selection_start_ms: input.data.startMs,
+    selection_end_ms: input.data.endMs,
+    selection_quote: selectedPassage,
+    student_question: input.data.question,
+    ai_answer: answer,
   });
-  if (error) return { error: "AI answered, but the response could not be added to the class thread." };
+  if (error) return { error: "AI answered, but the response could not be saved to the class Q&A." };
   revalidatePath("/classes/[id]/lectures/[lectureId]", "page");
-  return { success: "AI answer added to the class thread." };
+  return { success: "AI answer added to class Q&A." };
 }
