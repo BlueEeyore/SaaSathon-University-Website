@@ -96,7 +96,7 @@ export async function askAboutTranscript(_: FormState, form: FormData): Promise<
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model,
-        instructions: "You are a helpful teaching assistant. Answer the student's question using the lecture excerpt. Be accurate and concise. If the excerpt does not contain enough information, say so. Do not invent details. Keep your answer below 350 words.",
+        instructions: "You are a helpful teaching assistant. Answer the student's question using the lecture excerpt. Be accurate and concise. If the excerpt does not contain enough information, say so. Do not invent details. Use Markdown when useful. Put mathematical variables, subscripts, superscripts, and equations in LaTeX delimiters: $...$ inline or $$...$$ on a separate line. Write $V_1$, not raw notation such as (V_1). Keep your answer below 350 words.",
         input: `Selected passage (${Math.floor(input.data.startMs / 1000)}s):\n${selectedPassage}\n\nNearby lecture transcript:\n${relevant}\n\nStudent question:\n${input.data.question}`,
         reasoning: { effort: "low" },
         max_output_tokens: 500,

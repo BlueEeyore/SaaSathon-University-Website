@@ -1,5 +1,15 @@
 import ReactMarkdown, { type Components } from "react-markdown";
+import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+
+function normalizeLegacyMath(text: string) {
+  return text.replace(/\(([^()\n]+)\)/g, (match, expression: string) => {
+    const value = expression.trim();
+    const isMath = /^[A-Za-z](?:[_^]\{?[A-Za-z0-9]+\}?)?$/.test(value) || /[_^]|\\[A-Za-z]+/.test(value);
+    return isMath ? `$${value}$` : match;
+  });
+}
 
 const markdownComponents: Components = {
   h1: ({ children }) => <h1 className="text-lg font-semibold tracking-tight text-foreground">{children}</h1>,
@@ -23,6 +33,10 @@ const markdownComponents: Components = {
 
 export function AiAnswer({ text, className = "" }: { text: string; className?: string }) {
   return <div className={`space-y-3 leading-6 ${className}`}>
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{text}</ReactMarkdown>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[[rehypeKatex, { throwOnError: false }]]}
+      components={markdownComponents}
+    >{normalizeLegacyMath(text)}</ReactMarkdown>
   </div>;
 }
