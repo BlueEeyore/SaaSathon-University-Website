@@ -6,6 +6,7 @@ import { LockKeyhole, Send, Sparkles } from "lucide-react";
 import { askAboutScope } from "@/app/classes/lecture-discussion-actions";
 import type { FormState, lectureAiSourceSchema } from "@/lib/validation";
 import type { z } from "zod";
+import { AiAnswer } from "@/components/ai-answer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,7 +63,7 @@ export function ScopedAiQuestions({
         <h3 className="text-sm font-semibold">Your {scope === "class" ? "class" : "lecture"} questions</h3>
         {questions.map((item) => <article key={item.id} className="space-y-3 rounded-xl border bg-white p-4">
           <div><p className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleString()}</p><p className="mt-1 font-medium">{item.question}</p></div>
-          <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{item.answer}</p>
+          <AiAnswer text={item.answer} className="text-sm text-muted-foreground" />
           <div className="space-y-2 border-t pt-3">
             <p className="text-xs font-semibold text-foreground">Relevant transcript sections</p>
             {item.sources.map((source, index) => <Link key={`${source.lecture_id}-${source.start_ms}-${index}`}

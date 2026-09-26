@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquareQuote, Send, Sparkles } from "lucide-react";
 import { askAboutTranscript, createTranscriptThread, replyToTranscriptThread } from "@/app/classes/lecture-discussion-actions";
+import { AiAnswer } from "@/components/ai-answer";
 import type { FormState, TranscriptSegment } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -261,7 +262,7 @@ export function TranscriptDiscussion({
             <p className="mt-2 text-sm font-medium">{item.question}</p>
             <div className="mt-3 border-t pt-3">
               <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-[#1f70b7]"><Sparkles className="size-3.5" />AI answer</p>
-              <p className="whitespace-pre-wrap text-sm leading-6">{item.answer}</p>
+              <AiAnswer text={item.answer} className="text-sm" />
             </div>
           </article>;
         })}
