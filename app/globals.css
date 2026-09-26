@@ -178,12 +178,6 @@
   min-height: 100svh;
 }
 
-.transcript-story__footnote {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 1.25rem;
-}
-
 @supports (animation-timeline: view()) {
   .story-progress {
     animation: story-progress linear both;
@@ -210,14 +204,6 @@
   background: radial-gradient(circle, #dceeff 0%, rgb(220 238 255 / 0%) 74%);
 }
 
-.owl-hero__glass {
-  filter: drop-shadow(0 3px 4px rgb(20 36 53 / 0.12));
-}
-
-.owl-hero__note {
-  transform: rotate(2deg);
-}
-
 @media (min-width: 768px) {
   .transcript-story__stage {
     position: sticky;
@@ -230,10 +216,6 @@
     min-height: auto;
   }
 
-  .transcript-story__footnote {
-    position: static;
-    padding-bottom: 2rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

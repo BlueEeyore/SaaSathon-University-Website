@@ -124,9 +124,6 @@ export function TranscriptStory() {
           </div>
         </div>
       </div>
-      <div className="transcript-story__footnote mx-auto max-w-7xl px-5 pb-8 text-[10px] uppercase tracking-[0.14em] text-white/35 sm:px-8">
-        Scroll to follow the thought
-      </div>
     </section>
   );
 }
