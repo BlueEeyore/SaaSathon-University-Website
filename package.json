@@ -17,6 +17,7 @@
     "test:integration": "tsx scripts/test-integration.ts",
     "db:start": "supabase start",
     "db:reset": "supabase db reset --local",
+    "db:seed:demo": "tsx scripts/seed-demo.ts",
     "db:types": "supabase gen types typescript --local > lib/database.types.ts",
     "worker:whisper": ".venv-whisper/bin/python workers/whisper/worker.py"
   },
