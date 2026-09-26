@@ -81,12 +81,36 @@ export const lectureSchema = z.object({
     .max(2000, "Keep the description under 2,001 characters."),
 });
 
+export const lectureUploadTitleSchema = z
+  .string()
+  .trim()
+  .min(1, "Give the lecture a title.")
+  .max(120, "Keep the title under 121 characters.");
+
 // Uploads stream to disk outside the action layer, so this only bounds what we
 // are willing to normalise and transcribe on the demo host.
+export const LECTURE_UPLOAD_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+export const LECTURE_UPLOAD_MAX_SECONDS = 60 * 60;
 export const uploadPolicySchema = z.object({
-  maxBytes: z.number().int().positive().max(4 * 1024 * 1024 * 1024),
-  maxSeconds: z.number().int().positive().max(4 * 60 * 60),
+  maxBytes: z.number().int().positive().max(LECTURE_UPLOAD_MAX_BYTES),
+  maxSeconds: z.number().int().positive().max(LECTURE_UPLOAD_MAX_SECONDS),
 });
+
+export const lectureSourceFormatSchema = z.enum(["mp4", "mov", "webm"]);
+export type LectureSourceFormat = z.infer<typeof lectureSourceFormatSchema>;
+
+export const transcriptSegmentsSchema = z.array(z.object({
+  index: z.number().int().nonnegative(),
+  start_ms: z.number().int().nonnegative(),
+  end_ms: z.number().int().positive(),
+  text: z.string(),
+  words: z.array(z.object({
+    w: z.string(),
+    start_ms: z.number().int().nonnegative(),
+    end_ms: z.number().int().positive(),
+  })),
+}));
+export type TranscriptSegment = z.infer<typeof transcriptSegmentsSchema>[number];
 
 // --- Highlights and comments ---
 

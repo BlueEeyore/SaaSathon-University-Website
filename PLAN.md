@@ -3,7 +3,7 @@
 Supersedes the original feature sketch. Feature *intent* is preserved in "Product scope";
 everything under "Decisions" is settled and should not be re-litigated during implementation.
 
-Status: **in progress.** Foundations and the identity database are built. The first class UI slice is implemented; upload and transcription remain ahead.
+Status: **in progress.** Foundations, identity/classes, and the upload/transcription/player slice are implemented. Highlights, discussion and analytics remain ahead.
 
 ---
 
@@ -40,25 +40,25 @@ demo day, and deferring them keeps the demo spine buildable.
 
 | Area | Decision |
 |---|---|
-| Language | TypeScript throughout. One exception: a small Python worker for Whisper, behind an HTTP interface, swappable. |
+| Language | TypeScript throughout the app. A small Python worker runs ffmpeg and faster-whisper, and communicates with Supabase through HTTP. |
 | Framework | Existing Next.js App Router + Supabase starter. No rewrite. |
 | App hosting | **Self-hosted on the demo machine.** No VPS needed for the demo; a VPS is a later optimisation for a public URL. |
 | Reverse proxy | Caddy with automatic HTTPS, in front of Next.js. Optional for a LAN demo. |
-| Database / auth | Supabase Cloud free tier. Local Supabase stack stays for development and tests. |
+| Database / auth | Local Supabase stack for the demo. A Supabase Cloud project is a later public-deployment step. |
 | **Video storage** | **Local disk on the app host, not Supabase Storage.** See "Why not Supabase Storage". |
 | CPU | Demo host: 8 threads (Intel i5-8365U, 1.6GHz), 15GB RAM, ffmpeg and Python 3.12 present. Measured: `base` 4.1x realtime / 890MB, `small` 1.8x / 1727MB. See `workers/whisper/BENCHMARK.md`. |
 | Transcription | Self-hosted `faster-whisper` (CTranslate2, int8) on the app host. `small` for pre-transcribed content, `base` for live, configurable per job. |
 | Transcription timing | **Pre-transcribed by default.** Measured 4.1x realtime for `base`, so live is a viable fallback but never the primary path. |
 | AI | OpenAI API, server-side key only. Never a `NEXT_PUBLIC_` variable. |
-| Transcriber swap | `Transcriber` interface with a mock implementation. Satisfies "easy to switch transcriber" and keeps tests hermetic. |
+| Transcriber swap | The local demo uses faster-whisper directly in the Python worker. A provider adapter can be added when another transcriber is needed. |
 | Moodle | `LmsProvider` interface + `lms_external_id` columns now; real integration later. Embeddable player built in Phase 2. |
 | Roles | One global role per user (`student` or `lecturer`). Lecturer access requires an email allowlist. |
 | Enrollment | Both paths ship. **Join code is the demo path and is built first.** CSV roster import follows. Per-student invite links are out of scope. |
-| Sign-in | Google OAuth through Supabase Auth. The owner will configure the Google provider and redirect URLs later. |
+| Sign-in | Google OAuth through local Supabase Auth. Local provider credentials and redirects are configured. |
 | Comments | Anchor to a highlight **or** a timestamp range. Visible to everyone in the class. |
 | Transcript | Segment rows (~5–15s) with a word-level JSONB array per segment. One read renders a transcript. |
-| Captions | Generated WebVTT served from Storage, rendered by native `<track>`. No custom caption component. |
-| Video processing | Accept a large upload, then downscale to 720p and compress via ffmpeg in the worker. |
+| Captions | Generated WebVTT served from local disk through an authenticated route, rendered by native `<track>`. No custom caption component. |
+| Video processing | Accept MP4, MOV, or WebM up to 2 GB / 60 minutes, then downscale to 720p and compress via ffmpeg in the worker. |
 | Analytics sampling | 10s heartbeat plus discrete play/pause/seek/ended, batched client-side. Lecturers see all per-student data. |
 | Analytics reads | Aggregated server-side via `security definer` RPCs. Never aggregated in the browser. |
 
@@ -83,9 +83,9 @@ These are verification steps, not features. Each one can invalidate a decision a
    fine for a seed, but not for anything you transcribe on demo day.
 6. **Choose the OpenAI model for Phase 2.** Not needed for the demo spine, so it can wait, but the
    cost difference between a small and a large model is worth a decision rather than a default.
-7. **Create the Supabase Cloud project.** Needs your account. Apply the migrations, configure
-   Google OAuth and its redirect URLs, then confirm the Site URL. Until this exists there is no
-   hosted database to deploy to.
+7. **Future public deployment:** create a Supabase Cloud project, apply the migrations, configure
+   Google OAuth/redirect URLs, and set the deployed Site URL. This is not required for the local
+   demo.
 
 ---
 
@@ -93,7 +93,7 @@ These are verification steps, not features. Each one can invalidate a decision a
 
 ```text
 Browser
-  ├─ reads  ──────────────► Next.js Server Components ──► Supabase Cloud (Postgres + Auth)
+  ├─ reads  ──────────────► Next.js Server Components ──► Supabase (Postgres + Auth)
   ├─ writes ──► Server Actions (zod-validated, ownership from auth.uid())
   ├─ video upload ────────► streaming route handler ────► local disk (app host)
   ├─ video playback ──────► streaming route handler (HTTP range) ──► local disk
@@ -101,7 +101,7 @@ Browser
 
 App host (the demo machine)
   ├─ Next.js (node)  ── serves app + media from disk
-  └─ Whisper worker  ── Python; polls transcription_jobs, writes results
+  └─ Whisper worker  ── Python; polls transcription_jobs through Supabase REST, writes results
 ```
 
 **Why Postgres is the job queue.** Transcription takes minutes, far longer than any HTTP request
@@ -114,7 +114,7 @@ file and the lecture status keeps every long-running step off the request path.
 
 **Deliberate deviation from the starter.** The README states there is no service-role client in
 app code. The worker needs one to write results, so this is an intentional exception. Constraints:
-the key exists only in the worker's server-side environment, never in the Next.js app, never in a
+the key exists only in `.env.worker` read by the Python worker, never in the Next.js app, never in a
 `NEXT_PUBLIC_` variable, and never in the browser. If that cannot be honoured, the fallback is a
 signed callback from the worker into a Next.js route handler — slower, but it keeps the app free
 of elevated credentials.
@@ -171,9 +171,9 @@ form data.
 | `classes` | `title`, `description`, `join_code` (unique), `lecturer_id`, `archived_at` | Lecturer owns it. See the enrollment note below. |
 | `class_members` | `(class_id, user_id)` PK, `role`, `joined_at` | Join code inserts here directly. |
 | `class_roster` | `class_id`, `email`, `claimed_at?`, `claimed_by?` | Pending enrolment by email. Unique on `(class_id, email)`. Claimed on first sign-in. Backs both CSV import and single-address add. |
-| `lectures` | `class_id`, `title`, `source_path`, `video_path`, `duration_ms`, `captions_path`, `status` | `status`: `uploaded → normalizing → transcribing → ready` / `failed`. |
+| `lectures` | `class_id`, `title`, `source_format`, `source_bytes`, `duration_ms`, `status` | Local file paths derive from the lecture UUID. `status`: `uploaded → normalizing → transcribing → ready` / `failed`. |
 | `transcripts` | `lecture_id`, `language`, `provider`, `model`, `text`, `segments jsonb` | `segments`: `[{index, start_ms, end_ms, text, words:[{w,start_ms,end_ms}]}]`. One row per lecture. |
-| `transcription_jobs` | `lecture_id`, `status`, `attempts`, `error`, `claimed_at` | The queue. Service-role only. |
+| `transcription_jobs` | `lecture_id`, `status`, `attempts`, `error`, `claimed_at` | The queue. Service-role only, claimed atomically through a `skip locked` RPC. |
 | `highlights` | `lecture_id`, `user_id`, `start_ms`, `end_ms`, `quote`, `segment_indexes` | `quote` keeps the highlight meaningful and survives transcript re-rendering. |
 | `comments` | `lecture_id`, `highlight_id?`, `parent_id?`, `author_id`, `body`, `start_ms?`, `end_ms?` | `parent_id` gives threading. |
 | `watch_events` | `lecture_id`, `user_id`, `session_id`, `type`, `position_ms`, `duration_ms`, `watched_ms` | High volume. Insert-only. Students insert their own; **not** directly selectable by lecturers. |
@@ -281,23 +281,18 @@ feature over layers of abstractions.
 
 ### Phase 2 — Upload, transcription, player
 
-- **Upload route handler** that streams the request body straight to disk (`request.body` piped to
-  a write stream). No size limit, no memory buffering, and no signed-URL round trip. Must validate
-  content type, reject on a configured max duration/size, and write to a temp path that is renamed
-  only on success.
-- **Playback route handler** implementing HTTP range requests (`206 Partial Content`) so the
-  browser can seek without downloading the whole file. This is the same code path Caddy will serve
-  in front of Next.js once a public URL exists.
-- Migration: `lectures`, `transcripts`, `transcription_jobs`.
-- Worker: ffmpeg normalise to 720p + compressed MP4 on local disk, then `faster-whisper` with VAD
-  and word-level timestamps. Writes the normalised file, the `transcripts` row and lecture status.
-- WebVTT generation from the segments, written alongside the media.
-- Player: video, transcript that follows along, native captions, click-to-seek.
+- **DONE.** Upload route streams MP4, MOV, and WebM directly to a temporary local file, verifies
+  the actual container/duration/audio with ffprobe, caps files at 2 GB / 60 minutes, and registers
+  the lecture/job only after successful upload.
+- **DONE.** Migration adds `lectures`, `transcripts`, `transcription_jobs`, RLS, a lecturer-checked
+  registration function, and an atomic worker claim function.
+- **DONE.** Python worker normalizes to compressed 720p MP4, transcribes with faster-whisper VAD
+  and word-level timestamps, and writes transcript and WebVTT results to local disk/DB.
+- **DONE.** Authenticated HTTP range playback and caption routes restrict access to class members;
+  transcript text follows video time and supports click-to-seek.
 - Embeddable player mode for later Moodle use.
-- **Full seed script.** Registers the recorded lecture, runs it through the worker, and inserts a
-  realistic transcript, captions, a few highlights and comment threads. The demo must never depend
-  on transcribing live. Idempotent, local-or-Cloud only, and it must refuse to run against a
-  production database without an explicit override.
+- **OPEN.** Add the full seed script and prepare a demo recording; the live upload flow currently
+  performs a real transcription and should be exercised before demo day.
 
 ### Phase 3 — Highlights and comments
 
@@ -335,16 +330,16 @@ built in Phase 1, so this phase is only the upload-and-parse UI), AI overview, c
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| App host disk fills with video | Upload or playback fails mid-demo | Delete the source file after normalisation; keep only the normalised copy; scheduled cleanup |
+| App host disk fills with video | Upload or playback fails mid-demo | Delete source after successful transcription; keep only the normalized copy; scheduled cleanup |
 | `small` model too slow or too large on a smaller host | Live transcription stalls, or OOM | `small` is for pre-transcribed content only; `base` is the live/small-host fallback and fits in ~890MB |
-| Supabase free tier pauses an inactive project | Total failure on demo day | Daily authenticated request from the app host; check project activity shortly before the demo |
-| Transcription slower than hoped | Demo stalls | Pre-transcribe and seed; never transcribe live |
+| A later Supabase Cloud project pauses while inactive | Hosted auth/data unavailable | Configure a keepalive only if/when the app moves to Cloud; local demo is unaffected |
+| Transcription slower than hoped | Demo stalls | Pre-process the demo lecture once before presenting; the upload flow can process other files in the background |
 | Video scrubbing stutters | Feels broken on a projector | Normalise to 720p and a modest bitrate in the worker; verify range requests work before the demo |
 | Quick login left enabled on a public URL | Anyone signs in as a demo user | Env-gated, off by default, startup warning, test; remove before any public exposure |
 | RLS regression as tables multiply | Data leak between classes | Two-account test per table, per `AGENTS.md`; extend the integration test as each phase lands |
 | Word-level data bloat | Slow transcript page | Segments + JSONB, one read; do not create a row per word |
 | Domain/HTTPS not ready | Broken cookies, awkward demo | Not needed for a LAN demo; Caddy with automatic HTTPS when a public URL is wanted |
-| OpenAI key missing | Phase 2 blocked only | Mock provider; the demo spine never calls OpenAI |
+| OpenAI key missing | Deferred AI features unavailable | Upload, transcription, player and the core demo spine do not call OpenAI |
 
 ---
 
@@ -358,7 +353,7 @@ From `AGENTS.md`, unchanged and binding:
 - Never commit `.env.local`, credentials, tokens or keys. Public placeholders in `.env.example`.
 - Tests use only the dedicated local database. Never reset a linked or production database.
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build` and `pnpm test:integration` must pass.
-- No paid services or production projects without the owner's approval. (OpenAI is approved;
-  Supabase Cloud free tier is approved.)
+- No paid services or production projects without the owner's approval. The current local demo
+  does not require a paid service.
 
 Design stays functional and clean. Not a priority this cycle.

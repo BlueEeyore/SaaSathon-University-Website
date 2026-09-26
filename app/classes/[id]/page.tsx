@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, BookOpen, Captions, Clock3, FileVideo2, MessageSquareText, Upload, UsersRound } from "lucide-react";
+import { ArrowLeft, BookOpen, Captions, FileVideo2, MessageSquareText, UsersRound } from "lucide-react";
 import { BrandWordmark } from "@/components/brand-wordmark";
 import { requireUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/config";
 import { signOut } from "@/app/login/actions";
 import { CopyCodeButton } from "@/components/copy-code-button";
+import { UploadLectureForm } from "@/components/upload-lecture-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
   const { data: currentMembership } = await supabase.from("class_members").select("role").eq("class_id", id).eq("user_id", userId).maybeSingle();
   if (!currentMembership) notFound();
   const isLecturer = currentMembership.role === "lecturer";
+  const { data: lectures } = await supabase.from("lectures").select("id, title, duration_ms, status, created_at, error_message").eq("class_id", id).order("created_at", { ascending: false });
   const { data: members, count } = await supabase.from("class_members").select("user_id, role", { count: "exact" }).eq("class_id", id).eq("role", "student").order("joined_at", { ascending: true }).limit(8);
   const { data: profiles } = isLecturer && members?.length
     ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", members.map((member) => member.user_id))
@@ -43,8 +45,8 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section>
-          <div className="mb-4 flex items-end justify-between"><div><h2 className="text-lg font-semibold tracking-tight">Lecture library</h2><p className="mt-1 text-sm text-muted-foreground">Watch, read, and discuss your course recordings.</p></div>{isLecturer && <Button disabled><Upload />Upload lecture</Button>}</div>
-          <Card className="border-dashed shadow-none"><CardContent className="flex min-h-[330px] flex-col items-center justify-center px-6 py-12 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-[#eaf3fb] text-[#1f70b7]"><FileVideo2 className="size-6" /></span><h3 className="mt-5 text-base font-semibold">Your lecture library is ready</h3><p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{isLecturer ? "Upload and transcribe your first lecture to give students a place to start." : "Your lecturer has not added a recording yet. New lectures will appear here."}</p>{isLecturer && <Badge variant="secondary" className="mt-5"><Clock3 className="size-3.5" />Lecture uploads are coming next</Badge>}</CardContent></Card>
+          <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h2 className="text-lg font-semibold tracking-tight">Lecture library</h2><p className="mt-1 text-sm text-muted-foreground">Watch, read, and discuss your course recordings.</p></div>{isLecturer && <UploadLectureForm classId={id} />}</div>
+          {lectures?.length ? <div className="space-y-3">{lectures.map((lecture) => <Link key={lecture.id} href={`/classes/${id}/lectures/${lecture.id}`} className="block"><Card className="transition-colors hover:border-[#b7d5ef]"><CardContent className="flex flex-col justify-between gap-3 p-5 sm:flex-row sm:items-center"><div className="flex min-w-0 items-center gap-4"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#eaf3fb] text-[#1f70b7]"><FileVideo2 className="size-5" /></span><div className="min-w-0"><p className="truncate font-medium">{lecture.title}</p><p className="mt-1 text-xs text-muted-foreground">{Math.floor(lecture.duration_ms / 60000)} min · Added {new Date(lecture.created_at).toLocaleDateString("en", { month: "short", day: "numeric" })}</p></div></div><div className="flex shrink-0 items-center gap-3"><Badge variant={lecture.status === "ready" ? "secondary" : "outline"} className={lecture.status === "failed" ? "border-red-200 bg-red-50 text-red-700" : undefined}>{lecture.status === "ready" ? "Ready to watch" : lecture.status === "failed" ? "Processing failed" : lecture.status === "uploaded" ? "Queued" : lecture.status === "normalizing" ? "Preparing video" : lecture.status === "transcribing" ? "Transcribing" : lecture.status}</Badge><span aria-hidden="true" className="text-muted-foreground">↗</span></div></CardContent>{lecture.status === "failed" && lecture.error_message && <p className="px-5 pb-4 text-sm text-destructive">{lecture.error_message}</p>}</Card></Link>)}</div> : <Card className="border-dashed shadow-none"><CardContent className="flex min-h-[280px] flex-col items-center justify-center px-6 py-12 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-[#eaf3fb] text-[#1f70b7]"><FileVideo2 className="size-6" /></span><h3 className="mt-5 text-base font-semibold">{isLecturer ? "Your lecture library is ready" : "No lectures yet"}</h3><p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{isLecturer ? "Upload a recording and it will appear here after processing." : "Your lecturer has not added a recording yet. New lectures will appear here."}</p></CardContent></Card>}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">{upcoming.map(({ icon: Icon, title, text }) => <Card key={title} className="shadow-none"><CardContent className="flex gap-3 p-4"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf3fb] text-[#1f70b7]"><Icon className="size-4" /></span><div><p className="text-sm font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div></CardContent></Card>)}</div>
         </section>
 

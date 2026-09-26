@@ -186,6 +186,56 @@ export type Database = {
         }
         Relationships: []
       }
+      lectures: {
+        Row: {
+          class_id: string
+          created_at: string
+          description: string
+          duration_ms: number
+          error_message: string | null
+          id: string
+          source_bytes: number
+          source_format: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          description?: string
+          duration_ms: number
+          error_message?: string | null
+          id?: string
+          source_bytes: number
+          source_format: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          description?: string
+          duration_ms?: number
+          error_message?: string | null
+          id?: string
+          source_bytes?: number
+          source_format?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lectures_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -210,6 +260,82 @@ export type Database = {
         }
         Relationships: []
       }
+      transcripts: {
+        Row: {
+          created_at: string
+          language: string
+          lecture_id: string
+          model: string
+          provider: string
+          segments: Json
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          language?: string
+          lecture_id: string
+          model: string
+          provider: string
+          segments: Json
+          text: string
+        }
+        Update: {
+          created_at?: string
+          language?: string
+          lecture_id?: string
+          model?: string
+          provider?: string
+          segments?: Json
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcripts_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: true
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transcription_jobs: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          error: string | null
+          lecture_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          lecture_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          error?: string | null
+          lecture_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcription_jobs_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: true
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -223,8 +349,25 @@ export type Database = {
       }
       is_class_lecturer: { Args: { target_class: string }; Returns: boolean }
       is_class_member: { Args: { target_class: string }; Returns: boolean }
+      is_lecture_member: { Args: { target_lecture: string }; Returns: boolean }
       my_profile_email: { Args: never; Returns: string }
       redeem_join_code: { Args: { code: string }; Returns: string }
+      register_lecture_upload: {
+        Args: {
+          file_bytes: number
+          file_format: string
+          lecture_description: string
+          lecture_title: string
+          media_duration_ms: number
+          target_class: string
+          upload_id: string
+        }
+        Returns: string
+      }
+      claim_transcription_job: {
+        Args: never
+        Returns: { attempts: number; lecture_id: string }[]
+      }
       shares_class_with: { Args: { target_user: string }; Returns: boolean }
     }
     Enums: {
@@ -361,4 +504,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

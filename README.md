@@ -2,7 +2,7 @@
 
 **A shared space for lectures, transcripts, and class discussion.**
 
-HighlightEd is a lecture-capture app built with Next.js, TypeScript, Supabase, and shadcn/ui. Lecturers create classes and share a join code; students join their class spaces. Lecture upload, transcription, discussion, and analytics are the next product slices.
+HighlightEd is a lecture-capture app built with Next.js, TypeScript, Supabase, and shadcn/ui. Lecturers create classes, upload recordings, and share a join code; students join their class spaces and follow lectures with transcripts and captions. Discussion and analytics are the next product slices.
 
 [SaaSathon](https://www.saasathon.dev) · [Project plan](PLAN.md) · [Session handoff](HANDOFF.md)
 
@@ -11,13 +11,14 @@ HighlightEd is a lecture-capture app built with Next.js, TypeScript, Supabase, a
 - Next.js App Router and React Server Components for reads; Server Actions for writes.
 - Google OAuth sign-in through Supabase Auth.
 - Lecturer and student class dashboards, lecturer class creation, and student enrollment by join code.
+- Large lecture uploads streamed to local disk, with asynchronous ffmpeg/faster-whisper processing, authenticated playback, transcript seeking, and captions.
 - Class membership and lecturer permissions enforced by Postgres row-level security and database functions.
 - Accessible labels, keyboard focus, semantic forms and confirmation before deletion.
 - Typed Supabase clients, explicit grants, row-level security and class access functions.
 - Tailwind v4 and shadcn/ui components with the HighlightEd visual theme.
 - A lockfile, CI, a local integration test and Vercel configuration.
 
-Google OAuth credentials are configured in Supabase, not in the browser app. Until that provider is enabled, the sign-in button cannot complete authentication.
+Google OAuth credentials are configured in local Supabase, not in the browser app. A separate setup is required for a future hosted deployment.
 
 ## 1. Make a repository
 
@@ -58,7 +59,7 @@ The first start downloads images and applies the migration automatically. Local 
 | Studio      | http://127.0.0.1:55433 |
 | Email inbox | http://127.0.0.1:55434 |
 
-The local stack provides the database and auth service. Google OAuth needs provider credentials configured in Supabase before sign-in can complete.
+The local stack provides the database and auth service. Google OAuth credentials are read by local Supabase from the ignored project-root `.env` file; never commit or share the client secret.
 
 To recreate **only this local database** from the migration:
 
@@ -78,9 +79,41 @@ Open [localhost:3000](http://localhost:3000). Configure Google under Supabase Au
 
 If another app uses port 3000, use `pnpm dev --port 3100`. Never replace an existing dev server. Restart your own app after changing public environment variables.
 
+## 4. Upload and transcribe a lecture
+
+Lecturer accounts can upload MP4, MOV, or WebM videos up to 2 GB and 60 minutes. Videos are streamed to the ignored `media/` directory on this machine, normalized to MP4, then transcribed locally. Supabase stores only lecture metadata, transcript text, and word timings.
+
+Create the Python environment and install the worker if this machine does not already have it:
+
+```sh
+python3 -m venv .venv-whisper
+./.venv-whisper/bin/pip install -r workers/whisper/requirements.txt
+```
+
+Create a gitignored `.env.worker` file with the local service-role key shown by `pnpm supabase status`. This keeps the key out of the Next.js server environment as well as the browser. Never add it to `.env.local`, a `NEXT_PUBLIC_*` variable, or a commit:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55431
+WORKER_SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
+MEDIA_ROOT=./media
+TRANSCRIBER_MODEL=base
+```
+
+Keep this file on the local demo machine only. `MEDIA_ROOT` can stay `./media` for a local demo.
+
+Run the worker in its own terminal:
+
+```sh
+pnpm worker:whisper
+```
+
+Keep that terminal running while you use the app. The upload appears in the class immediately; the worker then converts it, creates the transcript and captions, and marks it ready to watch. Processing can take several minutes on this computer.
+
+The upload handler checks the container and duration with `ffprobe`, requires an audio track, streams to a temporary file, and only registers the lecture after the upload succeeds. Students can read lectures only in classes they have joined.
+
 Without environment configuration, the app shows setup guidance instead of a broken sign-in flow.
 
-## 4. Deploy your version
+## 5. Deploy your version
 
 Use a Supabase project dedicated to **your app**, never the SaaSathon event database. Creating hosted projects can have costs; use your team's approved account and plan.
 
