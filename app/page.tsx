@@ -59,7 +59,7 @@ export default function Home() {
       <section className="relative mx-auto grid max-w-7xl items-start gap-12 px-5 pb-24 pt-4 sm:px-8 sm:pb-32 sm:pt-6 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="scroll-reveal relative z-10">
           <BadgeLine />
-          <h1 className="mt-6 max-w-3xl text-[clamp(3.25rem,7vw,6.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">
+          <h1 className="mt-6 max-w-3xl text-[clamp(3rem,5vw,5.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">
             Make every
             <br />
             <span className="text-[#2786d7]">lecture click.</span>
