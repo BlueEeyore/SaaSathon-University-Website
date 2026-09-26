@@ -296,7 +296,7 @@ feature over layers of abstractions.
 
 ### Phase 3 — Highlights and comments
 
-- **DONE (migration pending local database access).** Migration `20261002000000_transcript_discussion.sql` adds class-readable transcript highlights and threaded comments with member-only RLS.
+- **DONE.** Migration `20261002000000_transcript_discussion.sql` adds class-readable transcript highlights and threaded comments with member-only RLS; applied to the local database without a reset.
 - **DONE.** Select word-timed transcript text to highlight it, comment, and reply in a shared side panel. Timestamp controls seek the video and the active transcript follows playback.
 - **DONE.** Members can ask GPT-6 Luna about a highlighted passage. The server sends only the passage and nearby transcript, caps the response, and adds the answer to the class-visible thread. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
 
