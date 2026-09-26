@@ -16,7 +16,15 @@ export async function createClass(_: FormState, form: FormData): Promise<FormSta
 
   const { supabase } = await requireUser();
   const { data: profile } = await supabase.from("profiles").select("role").single();
-  if (profile?.role !== "lecturer") return { error: "Lecturer access is required to create a class." };
+  if (profile?.role !== "lecturer") {
+    // A user can be added to the lecturer allowlist after their account was
+    // created. Re-check the verified profile email here so they do not need
+    // to wait for another OAuth callback before their role is synchronized.
+    const { data: claimed, error: claimError } = await supabase.rpc("claim_lecturer_role");
+    if (claimError || !claimed) {
+      return { error: "Lecturer access isn’t enabled for this Google account. If it was just added, sign out and back in; otherwise, ask the app owner to add this account’s Google email as a lecturer." };
+    }
+  }
 
   const { data: id, error } = await supabase.rpc("create_class", {
     class_title: input.data.title,
