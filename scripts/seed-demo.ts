@@ -73,6 +73,57 @@ function statusJson() {
   })) as { API_URL: string; SERVICE_ROLE_KEY: string };
 }
 
+async function ensureMediaFiles(mediaRoot: string, sourceVideo: string, sourceCaptions: string, lectureId: string) {
+  const videoPath = path.join(mediaRoot, "video", `${lectureId}.mp4`);
+  const captionsPath = path.join(mediaRoot, "captions", `${lectureId}.vtt`);
+  await mkdir(path.dirname(videoPath), { recursive: true });
+  await mkdir(path.dirname(captionsPath), { recursive: true });
+  try { await link(sourceVideo, videoPath); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") { /* already seeded */ }
+    else if (["EXDEV", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) await copyFile(sourceVideo, videoPath);
+    else throw error;
+  }
+  await copyFile(sourceCaptions, captionsPath);
+}
+
+type WatchTarget = { lectureId: string; durationMs: number; students: Array<{ id: string }> };
+
+function buildWatchEvents(target: WatchTarget, targetIndex: number, baseDate: number) {
+  const events: Array<Record<string, unknown>> = [];
+  const durationMs = Math.max(1, target.durationMs);
+  for (let studentIndex = 0; studentIndex < target.students.length; studentIndex++) {
+    const student = target.students[studentIndex];
+    const finalPercent = [18, 24, 42, 57, 68, 78, 96, 100][studentIndex % 8];
+    const sessionId = stableUuid(`session:${target.lectureId}:${student.id}`);
+    const watchedMs = Math.round(durationMs * finalPercent / 100);
+    const dayOffset = targetIndex + studentIndex / Math.max(1, target.students.length);
+    const createdAt = new Date(baseDate + dayOffset * 24 * 60 * 60 * 1000).toISOString();
+    const positionMs = Math.round(durationMs * finalPercent / 100);
+    events.push({ lecture_id: target.lectureId, user_id: student.id, session_id: sessionId, type: "open", position_ms: 0, duration_ms: durationMs, watched_ms: 0, created_at: createdAt });
+    events.push({ lecture_id: target.lectureId, user_id: student.id, session_id: sessionId, type: "play", position_ms: 0, duration_ms: durationMs, watched_ms: 0, created_at: new Date(Date.parse(createdAt) + 1000).toISOString() });
+    let remainingMs = watchedMs;
+    let elapsedSeconds = 10;
+    while (remainingMs > 0) {
+      const chunkMs = Math.min(60_000, remainingMs);
+      events.push({
+        lecture_id: target.lectureId, user_id: student.id, session_id: sessionId,
+        type: "heartbeat", position_ms: positionMs - remainingMs + chunkMs,
+        duration_ms: durationMs, watched_ms: chunkMs,
+        created_at: new Date(Date.parse(createdAt) + elapsedSeconds * 1000).toISOString(),
+      });
+      remainingMs -= chunkMs;
+      elapsedSeconds += 60;
+    }
+    events.push({
+      lecture_id: target.lectureId, user_id: student.id, session_id: sessionId,
+      type: finalPercent === 100 ? "ended" : "pause", position_ms: positionMs,
+      duration_ms: durationMs, watched_ms: 0,
+      created_at: new Date(Date.parse(createdAt) + elapsedSeconds * 1000).toISOString(),
+    });
+  }
+  return events;
+}
+
 async function main() {
   let local: ReturnType<typeof statusJson>;
   try {
@@ -123,13 +174,11 @@ async function main() {
     users.push({ id: user.id, email, full_name });
   }
 
-  const lectureIds: string[] = [];
   const classRows: Array<{ id: string; title: string; join_code: string }> = [];
   for (let classIndex = 0; classIndex < classes.length; classIndex++) {
     const classInfo = classes[classIndex];
     const classId = stableUuid(`class:${classInfo.title}`);
     const lectureId = stableUuid(`lecture:${classInfo.title}`);
-    lectureIds.push(lectureId);
     const classRow = await supabase.from("classes").upsert({
       id: classId, title: classInfo.title, description: classInfo.description,
       join_code: stableCode(classInfo.title), lecturer_id: lecturer.user_id,
@@ -159,61 +208,68 @@ async function main() {
     }, { onConflict: "lecture_id" });
     if (transcript.error) throw transcript.error;
 
-    const videoPath = path.join(mediaRoot, "video", `${lectureId}.mp4`);
-    const captionsPath = path.join(mediaRoot, "captions", `${lectureId}.vtt`);
-    await mkdir(path.dirname(videoPath), { recursive: true });
-    await mkdir(path.dirname(captionsPath), { recursive: true });
-    try { await link(sourceVideo, videoPath); } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") { /* already seeded */ }
-      else if (["EXDEV", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) await copyFile(sourceVideo, videoPath);
-      else throw error;
+    await ensureMediaFiles(mediaRoot, sourceVideo, sourceCaptions, lectureId);
+  }
+
+  // Include every existing lecturer class, not only the three new demo classes,
+  // so opening analytics from an older class is populated too.
+  const { data: lecturerClasses, error: classesError } = await supabase.from("classes")
+    .select("id, title").eq("lecturer_id", lecturer.user_id);
+  if (classesError) throw classesError;
+  const seededClassIds = new Set(classRows.map((row) => row.id));
+  const targets: WatchTarget[] = [];
+  for (const classItem of lecturerClasses ?? []) {
+    const firstStudent = classRows.findIndex((row) => row.id === classItem.id);
+    const classStudents = firstStudent >= 0
+      ? users.slice(firstStudent * studentCount, (firstStudent + 1) * studentCount)
+      : users.slice(0, studentCount);
+    if (!seededClassIds.has(classItem.id)) {
+      const memberships = classStudents.map((student) => ({
+        class_id: classItem.id, user_id: student.id, role: "student" as const,
+      }));
+      const membershipResult = await supabase.from("class_members").upsert(memberships, { onConflict: "class_id,user_id" });
+      if (membershipResult.error) throw membershipResult.error;
     }
-    await copyFile(sourceCaptions, captionsPath).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "EEXIST") throw error;
+
+    const { data: existingReadyLectures, error: lecturesError } = await supabase.from("lectures")
+      .select("id, title, duration_ms").eq("class_id", classItem.id).eq("status", "ready");
+    if (lecturesError) throw lecturesError;
+    let readyLectures = existingReadyLectures;
+    if (!readyLectures?.length) {
+      const lectureId = stableUuid(`analytics-demo:${classItem.id}`);
+      const lectureResult = await supabase.from("lectures").upsert({
+        id: lectureId, class_id: classItem.id, title: "Analytics demo recording",
+        description: "Prepared recording used to make sample watch analytics visible.",
+        source_format: "mp4", source_bytes: sourceInfo.size, duration_ms: durationMs, status: "ready",
+      }, { onConflict: "id" });
+      if (lectureResult.error) throw lectureResult.error;
+      const transcriptResult = await supabase.from("transcripts").upsert({
+        lecture_id: lectureId, language: "en", provider: "demo-seed", model: "caption-import",
+        text: segments.map((segment) => segment.text).join(" "), segments,
+      }, { onConflict: "lecture_id" });
+      if (transcriptResult.error) throw transcriptResult.error;
+      await ensureMediaFiles(mediaRoot, sourceVideo, sourceCaptions, lectureId);
+      readyLectures = [{ id: lectureId, title: "Analytics demo recording", duration_ms: durationMs }];
+    }
+    for (const lecture of readyLectures) targets.push({
+      lectureId: lecture.id, durationMs: lecture.duration_ms, students: classStudents,
     });
   }
 
-  // Replace only analytics rows attached to these deterministic demo lectures.
-  const clear = await supabase.from("watch_events").delete().in("lecture_id", lectureIds);
-  if (clear.error) throw clear.error;
-  const baseDate = Date.now() - 14 * 24 * 60 * 60 * 1000;
-  const events: Array<Record<string, unknown>> = [];
-  for (let classIndex = 0; classIndex < classes.length; classIndex++) {
-    const lectureId = lectureIds[classIndex];
-    for (let studentIndex = 0; studentIndex < studentCount; studentIndex++) {
-      const student = users[classIndex * studentCount + studentIndex];
-      const finalPercent = [18, 24, 42, 57, 68, 78, 96, 100][studentIndex];
-      const sessionId = stableUuid(`session:${lectureId}:${student.id}`);
-      const watchedMs = Math.round(durationMs * finalPercent / 100);
-      const createdAt = new Date(baseDate + (classIndex * 8 + studentIndex) * 24 * 60 * 60 * 1000).toISOString();
-      const positionMs = Math.round(durationMs * finalPercent / 100);
-      events.push({ lecture_id: lectureId, user_id: student.id, session_id: sessionId, type: "open", position_ms: 0, duration_ms: durationMs, watched_ms: 0, created_at: createdAt });
-      events.push({ lecture_id: lectureId, user_id: student.id, session_id: sessionId, type: "play", position_ms: 0, duration_ms: durationMs, watched_ms: 0, created_at: new Date(Date.parse(createdAt) + 1000).toISOString() });
-      let remainingMs = watchedMs;
-      let elapsedSeconds = 10;
-      while (remainingMs > 0) {
-        const chunkMs = Math.min(60_000, remainingMs);
-        events.push({
-          lecture_id: lectureId, user_id: student.id, session_id: sessionId,
-          type: "heartbeat", position_ms: positionMs - remainingMs + chunkMs,
-          duration_ms: durationMs, watched_ms: chunkMs,
-          created_at: new Date(Date.parse(createdAt) + elapsedSeconds * 1000).toISOString(),
-        });
-        remainingMs -= chunkMs;
-        elapsedSeconds += 60;
-      }
-      events.push({
-        lecture_id: lectureId, user_id: student.id, session_id: sessionId,
-        type: finalPercent === 100 ? "ended" : "pause", position_ms: positionMs,
-        duration_ms: durationMs, watched_ms: 0,
-        created_at: new Date(Date.parse(createdAt) + elapsedSeconds * 1000).toISOString(),
-      });
-    }
+  // Replace only events from this script's deterministic synthetic sessions.
+  const sessionIds = targets.flatMap((target) => target.students.map((student) => stableUuid(`session:${target.lectureId}:${student.id}`)));
+  for (let offset = 0; offset < sessionIds.length; offset += 100) {
+    const clear = await supabase.from("watch_events").delete().in("session_id", sessionIds.slice(offset, offset + 100));
+    if (clear.error) throw clear.error;
   }
-  const inserted = await supabase.from("watch_events").insert(events);
-  if (inserted.error) throw inserted.error;
+  const baseDate = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const events = targets.flatMap((target, index) => buildWatchEvents(target, index, baseDate));
+  for (let offset = 0; offset < events.length; offset += 500) {
+    const inserted = await supabase.from("watch_events").insert(events.slice(offset, offset + 500));
+    if (inserted.error) throw inserted.error;
+  }
 
-  console.log(`Seeded ${classRows.length} classes, ${users.length} synthetic students, ${lectureIds.length} prepared lectures, and ${events.length} watch events for ${lecturerEmail}.`);
+  console.log(`Seeded ${classRows.length} demo classes, ${users.length} synthetic students, ${targets.length} lectures with watch activity, and ${events.length} watch events across ${lecturerClasses?.length ?? 0} lecturer classes for ${lecturerEmail}.`);
   for (const row of classRows) console.log(`- ${row.title} (join code ${row.join_code})`);
   console.log("Demo students use reserved @demo.invalid emails and are not assigned passwords.");
 }
