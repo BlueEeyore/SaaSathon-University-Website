@@ -1,5 +1,8 @@
 # SaaSathon Starter
 
+Read `HANDOFF.md` first for current project state, then `PLAN.md` for the
+decisions behind it. Both go stale; prefer the code and tests when they disagree.
+
 Keep this a small, readable foundation. Prefer one complete feature over layers of abstractions.
 
 - Use pnpm, TypeScript strict mode, Next.js App Router and Tailwind v4.
@@ -9,5 +12,6 @@ Keep this a small, readable foundation. Prefer one complete feature over layers 
 - Match the tokens in app/globals.css and reuse components/ui. Inter is the only bundled font; do not add unlicensed brand assets.
 - Never commit .env.local, database credentials, tokens or private keys. Use public placeholders in .env.example.
 - Use only a dedicated local/test database for tests. Never reset a linked/production database.
-- Run pnpm lint, pnpm typecheck, pnpm test, pnpm build and, when Docker is available, pnpm test:integration.
+- Run pnpm lint, pnpm typecheck, pnpm test, pnpm build and, when Docker is available, pnpm test:identity and pnpm test:integration.
 - Do not provision paid services or additional production projects without the owner's approval.
+- The Supabase publishable key is public, so a signed-in client can write its own row. Grants and RLS are the security boundary, not application code. Never make role, email or membership client-writable.
