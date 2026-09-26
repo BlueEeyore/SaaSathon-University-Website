@@ -37,7 +37,7 @@ export default async function LoginPage({
       <div className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl items-center gap-12 px-5 pb-12 pt-4 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:gap-20">
         <section className="hidden lg:block">
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#1f70b7]">LEARN IN CONTEXT</p>
-          <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-0.05em] text-[#142435] xl:text-6xl">Every lecture,<br />a little clearer.</h1>
+          <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-0.05em] text-[#142435] xl:text-6xl">Every lecture,<br />a little clearer</h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-muted-foreground">Watch, read, and discuss your course material in one calm space built for learning.</p>
           <div className="mt-12 space-y-5">
             {features.map(({ icon: Icon, label }) => <div key={label} className="flex items-center gap-3 text-sm font-medium text-[#35495c]"><span className="flex size-9 items-center justify-center rounded-xl bg-[#eaf3fb] text-[#1f70b7]"><Icon className="size-4" /></span>{label}</div>)}
@@ -46,7 +46,7 @@ export default async function LoginPage({
             <div className="absolute -right-10 -top-16 size-64 rounded-full border-[1px] border-[#b7d5ef]" />
             <div className="absolute -right-2 -top-8 size-48 rounded-full border-[1px] border-[#b7d5ef]" />
             <div className="relative flex items-end justify-between">
-              <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1f70b7]">YOUR COURSE SPACE</p><p className="mt-2 text-xl font-semibold tracking-tight text-[#142435]">Learn at your own pace.</p></div>
+              <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1f70b7]">YOUR COURSE SPACE</p><p className="mt-2 text-xl font-semibold tracking-tight text-[#142435]">Learn at your own pace</p></div>
               <div className="flex size-12 items-center justify-center rounded-2xl bg-white/80 text-[#1f70b7]"><BookOpenCheck className="size-5" /></div>
             </div>
           </div>
