@@ -42,11 +42,12 @@ demo day, and deferring them keeps the demo spine buildable.
 |---|---|
 | Language | TypeScript throughout. One exception: a small Python worker for Whisper, behind an HTTP interface, swappable. |
 | Framework | Existing Next.js App Router + Supabase starter. No rewrite. |
-| App hosting | Self-hosted on your VPS. **Not Vercel** — its 4.5MB request cap, ephemeral filesystem and request timeouts are hostile to video and long transcriptions. |
-| Reverse proxy | Caddy with automatic HTTPS, in front of Next.js. |
-| Database / auth / storage | Supabase Cloud free tier. Local Supabase stack stays for development and tests. |
-| VPS | 2GB RAM or less, CPU only. This is the binding constraint on the whole design. |
-| Transcription | Self-hosted `faster-whisper` (CTranslate2, int8) on the VPS. `base` model by default, configurable. |
+| App hosting | **Self-hosted on the demo machine.** No VPS needed for the demo; a VPS is a later optimisation for a public URL. |
+| Reverse proxy | Caddy with automatic HTTPS, in front of Next.js. Optional for a LAN demo. |
+| Database / auth | Supabase Cloud free tier. Local Supabase stack stays for development and tests. |
+| **Video storage** | **Local disk on the app host, not Supabase Storage.** See "Why not Supabase Storage". |
+| CPU | Demo host: 8 threads (Intel i5-8365U, 1.6GHz), 15GB RAM, ffmpeg and Python 3.12 present. |
+| Transcription | Self-hosted `faster-whisper` (CTranslate2, int8) on the app host. `base` model by default, configurable. |
 | Transcription timing | **Pre-transcribed.** A CPU-only box cannot transcribe live at demo speed. |
 | AI | OpenAI API, server-side key only. Never a `NEXT_PUBLIC_` variable. |
 | Transcriber swap | `Transcriber` interface with a mock implementation. Satisfies "easy to switch transcriber" and keeps tests hermetic. |
@@ -67,14 +68,13 @@ demo day, and deferring them keeps the demo spine buildable.
 
 These are verification steps, not features. Each one can invalidate a decision above.
 
-1. **Verify Supabase Cloud free-tier limits.** Specifically the per-file upload size limit, total
-   storage, monthly egress, and project inactivity/pause behaviour. I have deliberately not
-   asserted these numbers. If the per-file limit is small, the "accept a large upload" decision
-   may need a chunked or resumable upload path.
-2. **Benchmark `faster-whisper` on your actual box.** Install the model, transcribe a 10-minute
-   sample, record wall-clock time and peak RSS. This sets the demo clip length cap and confirms
-   `base` fits in 2GB alongside Next.js. Do not trust a spec-sheet estimate.
-3. **Confirm the VPS has swap enabled** and enough disk for the model plus demo video.
+1. ~~**Verify Supabase Cloud free-tier limits.**~~ **DONE.** Verified: 50 MB max upload, 5 GB egress,
+   1 GB storage, 500 MB database, 2 free projects, paused after 1 week idle. Consequences folded
+   into "Why not Supabase Storage".
+2. **Benchmark `faster-whisper` on the demo machine.** In progress. Determines the demo clip length
+   cap and which model is viable. Results recorded in `workers/whisper/BENCHMARK.md`.
+3. ~~**Confirm the VPS has swap enabled.**~~ No longer applicable — the demo runs on the app host.
+   Swap is only needed if this later moves to a 2GB VPS.
 4. **Decide the fate of the starter's `ideas` table.** Recommendation: keep it for now, since its
    owner-only RLS is a useful reference and the integration test exercises it; delete it in a
    final migration once real features are proven. It is currently *your* call — flag it if you
@@ -83,6 +83,9 @@ These are verification steps, not features. Each one can invalidate a decision a
    fine for a seed, but not for anything you transcribe on demo day.
 6. **Choose the OpenAI model for Phase 2.** Not needed for the demo spine, so it can wait, but the
    cost difference between a small and a large model is worth a decision rather than a default.
+7. **Create the Supabase Cloud project.** Needs your account. Apply the migration, set both email
+   templates to `supabase/templates/magic-link.html`, and confirm the Site URL. Until this exists
+   there is no hosted database to deploy to.
 
 ---
 
@@ -90,14 +93,15 @@ These are verification steps, not features. Each one can invalidate a decision a
 
 ```text
 Browser
-  ├─ reads  ──────────────► Next.js Server Components ──► Supabase Cloud (Postgres, Auth, Storage)
+  ├─ reads  ──────────────► Next.js Server Components ──► Supabase Cloud (Postgres + Auth)
   ├─ writes ──► Server Actions (zod-validated, ownership from auth.uid())
-  ├─ video upload ────────► signed upload URL ────────► Supabase Storage (direct, bypasses app)
-  └─ watch events ──batched──► Server Action ────────► watch_events
+  ├─ video upload ────────► streaming route handler ────► local disk (app host)
+  ├─ video playback ──────► streaming route handler (HTTP range) ──► local disk
+  └─ watch events ──batched──► Server Action ──────────► watch_events
 
-VPS (2GB, CPU only)
-  ├─ Caddy ──► Next.js (node)
-  └─ Whisper worker (Python, polls transcription_jobs, writes results)
+App host (the demo machine)
+  ├─ Next.js (node)  ── serves app + media from disk
+  └─ Whisper worker  ── Python; polls transcription_jobs, writes results
 ```
 
 **Why Postgres is the job queue.** Transcription takes minutes, far longer than any HTTP request
@@ -109,11 +113,31 @@ restarts, and is easy to inspect in Supabase Studio during the demo.
 file and the lecture status keeps every long-running step off the request path.
 
 **Deliberate deviation from the starter.** The README states there is no service-role client in
-app code. The worker needs one to write results and to read source video, so this is an
-intentional exception. Constraints: the key exists only in the worker's server-side environment,
-never in the Next.js app, never in a `NEXT_PUBLIC_` variable, and never in the browser. If that
-cannot be honoured, the fallback is a signed callback from the worker into a Next.js route
-handler — slower, but it keeps the app free of elevated credentials.
+app code. The worker needs one to write results, so this is an intentional exception. Constraints:
+the key exists only in the worker's server-side environment, never in the Next.js app, never in a
+`NEXT_PUBLIC_` variable, and never in the browser. If that cannot be honoured, the fallback is a
+signed callback from the worker into a Next.js route handler — slower, but it keeps the app free
+of elevated credentials.
+
+### Why not Supabase Storage
+
+Verified against Supabase's published free-plan limits. Three numbers decide it:
+
+| Limit | Free plan | Consequence |
+|---|---|---|
+| Max file upload | **50 MB** | A 15-minute 720p lecture is ~170 MB. The upload is rejected outright. |
+| Egress | **5 GB / month** | One 170 MB video × 30 students = 5.1 GB — the whole month's allowance, in one lecture. |
+| File storage | 1 GB | A single normalised video fills it. |
+
+Supabase is therefore used for **Postgres and Auth only**. Video lives in a directory on the app
+host and is served from there.
+
+Two useful consequences: the upload no longer needs a signed-URL round trip — a plain streaming
+route handler on our own host has no size limit and never buffers the file in memory — and the
+5 GB egress allowance is left for app traffic instead of being consumed by video.
+
+The **1-week inactivity pause** is the remaining free-tier hazard. Mitigation: a daily
+authenticated request from the app host so the project never goes dormant.
 
 ---
 
@@ -228,13 +252,18 @@ feature over layers of abstractions.
 
 ### Phase 0 — Foundations
 
-- Benchmark Whisper on the box; verify Supabase free-tier limits.
-- Enable Supabase Storage in local `supabase/config.toml` (currently `enabled = false`) so dev
-  matches production.
-- Add new env vars to `.env.example` with public placeholders only.
+- Benchmark Whisper on the app host. **DONE** — see `workers/whisper/BENCHMARK.md`.
+- Supabase free-tier limits verified. **DONE** — see "Why not Supabase Storage".
+- **No Supabase Storage work needed.** The local stack's `[storage] enabled = false` stays as it
+  is; video is served from local disk instead. One less thing to configure.
+- Add new env vars to `.env.example` with public placeholders only: media root path, transcriber
+  endpoint, lecturer allowlist, demo-login flag, OpenAI key.
 - Extend `lib/validation.ts` with schemas for classes, lectures, highlights, comments, events.
-- Set up the VPS: Caddy, Node 22, Python, ffmpeg, swap. Add `output: "standalone"` to
-  `next.config.ts` so the Node server runs without bundling `node_modules`.
+- App host setup: Node 22, Python 3.12, ffmpeg (both already present here). Add
+  `output: "standalone"` to `next.config.ts` so the Node server runs without bundling
+  `node_modules`. Caddy with automatic HTTPS only when a public URL is wanted.
+- A media directory outside the repo (gitignored) for source and normalised video, plus a cleanup
+  job so the demo host does not fill its disk.
 - Restructure the integration test so it is not coupled to the `/ideas` demo. It currently asserts
   exact strings (`"A blank page."`, `"Idea added."`) and that `/ideas` 307s to `/login`. Building
   the real app breaks it, and CI runs it.
@@ -257,14 +286,20 @@ feature over layers of abstractions.
 
 ### Phase 2 — Upload, transcription, player
 
-- Storage bucket and signed upload URLs from a Server Action. Uploads bypass the app server.
+- **Upload route handler** that streams the request body straight to disk (`request.body` piped to
+  a write stream). No size limit, no memory buffering, and no signed-URL round trip. Must validate
+  content type, reject on a configured max duration/size, and write to a temp path that is renamed
+  only on success.
+- **Playback route handler** implementing HTTP range requests (`206 Partial Content`) so the
+  browser can seek without downloading the whole file. This is the same code path Caddy will serve
+  in front of Next.js once a public URL exists.
 - Migration: `lectures`, `transcripts`, `transcription_jobs`.
-- Worker: ffmpeg normalise to 720p + compressed MP4, then `faster-whisper` with VAD and
-  word-level timestamps. Writes Storage + `transcripts` + status.
-- WebVTT generation from the segments.
+- Worker: ffmpeg normalise to 720p + compressed MP4 on local disk, then `faster-whisper` with VAD
+  and word-level timestamps. Writes the normalised file, the `transcripts` row and lecture status.
+- WebVTT generation from the segments, written alongside the media.
 - Player: video, transcript that follows along, native captions, click-to-seek.
 - Embeddable player mode for later Moodle use.
-- **Full seed script.** Uploads the recorded lecture, runs it through the worker, and inserts a
+- **Full seed script.** Registers the recorded lecture, runs it through the worker, and inserts a
   realistic transcript, captions, a few highlights and comment threads. The demo must never depend
   on transcribing live. Idempotent, local-or-Cloud only, and it must refuse to run against a
   production database without an explicit override.
@@ -305,15 +340,14 @@ built in Phase 1, so this phase is only the upload-and-parse UI), AI overview, c
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| 2GB box OOM during the demo | Total failure | Pre-transcribe; cap worker concurrency to 1; enable swap; keep `base` model; monitor RSS |
-| Supabase free tier pauses an inactive project | Total failure on demo day | Check project activity shortly before the demo; keep the project active beforehand |
-| Per-file upload limit lower than expected | Upload fails | Verify before Phase 2; chunked upload fallback if needed |
+| App host disk fills with video | Upload or playback fails mid-demo | Delete the source file after normalisation; keep only the normalised copy; scheduled cleanup |
+| Supabase free tier pauses an inactive project | Total failure on demo day | Daily authenticated request from the app host; check project activity shortly before the demo |
 | Transcription slower than hoped | Demo stalls | Pre-transcribe and seed; never transcribe live |
-| 1GB storage cap | Upload fails late in rehearsal | Store one normalised copy; delete source files after normalisation |
+| Video scrubbing stutters | Feels broken on a projector | Normalise to 720p and a modest bitrate in the worker; verify range requests work before the demo |
 | Quick login left enabled on a public URL | Anyone signs in as a demo user | Env-gated, off by default, startup warning, test; remove before any public exposure |
 | RLS regression as tables multiply | Data leak between classes | Two-account test per table, per `AGENTS.md`; extend the integration test as each phase lands |
 | Word-level data bloat | Slow transcript page | Segments + JSONB, one read; do not create a row per word |
-| Domain/HTTPS not ready | Broken cookies, awkward demo | Caddy with automatic HTTPS; IP-over-HTTP fallback documented |
+| Domain/HTTPS not ready | Broken cookies, awkward demo | Not needed for a LAN demo; Caddy with automatic HTTPS when a public URL is wanted |
 | OpenAI key missing | Phase 2 blocked only | Mock provider; the demo spine never calls OpenAI |
 
 ---

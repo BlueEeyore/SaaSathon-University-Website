@@ -7,3 +7,5 @@ out/
 *.tsbuildinfo
 supabase/.temp/
 supabase/.branches/
+.venv*/
+media/
