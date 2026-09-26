@@ -60,7 +60,7 @@ export default function Home() {
           <h1 className="max-w-3xl text-[clamp(3rem,5vw,5.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">
             Make every
             <br />
-            <span className="text-[#2786d7]">lecture click.</span>
+            lecture <span className="text-[#2786d7]">click</span>.
           </h1>
           <p className="mt-7 max-w-lg text-base leading-7 text-[#607184] sm:text-lg sm:leading-8">
             A quieter, clearer place to watch your lectures, follow along with
