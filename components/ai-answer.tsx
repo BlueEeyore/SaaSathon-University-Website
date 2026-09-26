@@ -4,9 +4,12 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
 function normalizeLegacyMath(text: string) {
-  return text.replace(/\(([^()\n]+)\)/g, (match, expression: string) => {
+  const delimited = text
+    .replace(/\\\(([\s\S]+?)\\\)/g, (_match, expression: string) => `$${expression}$`)
+    .replace(/\\\[([\s\S]+?)\\\]/g, (_match, expression: string) => `$$\n${expression}\n$$`);
+  return delimited.replace(/\(([^()\n]+)\)/g, (match, expression: string) => {
     const value = expression.trim();
-    const isMath = /^[A-Za-z](?:[_^]\{?[A-Za-z0-9]+\}?)?$/.test(value) || /[_^]|\\[A-Za-z]+/.test(value);
+    const isMath = /^[A-Za-z](?:[_^]\{?[A-Za-z0-9]+\}?)?$/.test(value) || /[_^]|\\[A-Za-z]+|\|[^|]+\|/.test(value);
     return isMath ? `$${value}$` : match;
   });
 }
