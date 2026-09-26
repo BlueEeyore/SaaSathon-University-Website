@@ -55,7 +55,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="relative mx-auto grid max-w-7xl items-start gap-12 px-5 pb-24 pt-4 sm:px-8 sm:pb-32 sm:pt-6 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative mx-auto grid max-w-7xl items-start gap-12 px-5 pb-24 pt-6 sm:px-8 sm:pb-32 sm:pt-8 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="scroll-reveal relative z-10">
           <h1 className="max-w-3xl text-[clamp(3rem,5vw,5.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">
             Make every
@@ -169,16 +169,16 @@ export default function Home() {
 
       <section
         aria-label="A better way to learn"
-        className="flex min-h-[88svh] items-center justify-center bg-white px-6 py-24 text-center sm:min-h-screen"
+        className="flex items-center justify-center bg-white px-6 py-16 text-center sm:py-20"
       >
         <div className="scroll-reveal max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1f70b7]">
             LEARN IN CONTEXT
           </p>
-          <h2 className="mt-8 text-[clamp(3rem,8.5vw,8rem)] font-semibold leading-[0.96] tracking-[-0.075em]">
+          <h2 className="mt-5 text-[clamp(3rem,8.5vw,8rem)] font-semibold leading-[0.96] tracking-[-0.075em]">
             A lecture is more than a recording.
           </h2>
-          <p className="mx-auto mt-8 max-w-xl text-base leading-7 text-[#607184] sm:text-lg sm:leading-8">
+          <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-[#607184] sm:text-lg sm:leading-8">
             Keep the words, the moment, and the question together.
           </p>
         </div>
@@ -198,7 +198,7 @@ export default function Home() {
                 Everything around the lecture.
               </h2>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-muted-foreground">
+            <p className="text-sm leading-6 text-muted-foreground lg:whitespace-nowrap">
               Your class, recordings, transcripts, and conversations live
               together.
             </p>
@@ -231,34 +231,28 @@ export default function Home() {
 
       <TranscriptStory />
 
-      <section className="mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-28">
-        <div className="scroll-reveal relative overflow-hidden rounded-[28px] bg-[#eaf3fb] px-6 py-10 sm:px-12 sm:py-14">
-          <div
-            aria-hidden="true"
-            className="absolute -right-20 -top-40 size-[430px] rounded-full border border-[#c5def3]"
-          />
-          <div
-            aria-hidden="true"
-            className="absolute -right-4 -top-32 size-[330px] rounded-full border border-[#c5def3]"
-          />
-          <div className="relative flex flex-col justify-between gap-8 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#526779]">
-                READY WHEN YOU ARE
-              </p>
-              <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-                A better way to stay with the lesson.
-              </h2>
+      <section className="w-full bg-[#eaf3fb] px-5 py-14 sm:px-8 sm:py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="scroll-reveal relative overflow-hidden rounded-[28px] bg-[#eaf3fb] px-6 py-8 sm:px-12 sm:py-12">
+            <div className="relative flex flex-col justify-between gap-8 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#526779]">
+                  READY WHEN YOU ARE
+                </p>
+                <h2 className="mt-3 max-w-xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+                  A better way to stay with the lesson.
+                </h2>
+              </div>
+              <Button
+                asChild
+                size="xl"
+                className="h-14 shrink-0 rounded-full bg-[#2786d7] px-8 text-lg hover:bg-[#1f70b7]"
+              >
+                <Link href="/login">
+                  Sign in to your class <ArrowRight className="size-5" />
+                </Link>
+              </Button>
             </div>
-            <Button
-              asChild
-              size="xl"
-              className="shrink-0 rounded-full bg-[#2786d7] px-6 hover:bg-[#1f70b7]"
-            >
-              <Link href="/login">
-                Sign in to your class <ArrowRight />
-              </Link>
-            </Button>
           </div>
         </div>
       </section>
@@ -268,7 +262,7 @@ export default function Home() {
           <Link href="/" className="text-[#142435]">
             <BrandWordmark />
           </Link>
-          <span>Learn together. Remember more.</span>
+          <span className="text-sm">Learn together. Remember more.</span>
         </div>
       </footer>
     </main>
