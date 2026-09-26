@@ -16,6 +16,7 @@ export function UploadLectureForm({ classId }: { classId: string }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+  const [request, setRequest] = useState<XMLHttpRequest | null>(null);
 
   function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,6 +52,7 @@ export function UploadLectureForm({ classId }: { classId: string }) {
     );
     request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
     request.setRequestHeader("X-File-Extension", extension);
+    setRequest(request);
     request.upload.onprogress = (uploadEvent) => {
       if (uploadEvent.lengthComputable) {
         setProgress(Math.round((uploadEvent.loaded / uploadEvent.total) * 100));
@@ -58,6 +60,7 @@ export function UploadLectureForm({ classId }: { classId: string }) {
     };
     request.onload = () => {
       setBusy(false);
+      setRequest(null);
       if (request.status < 200 || request.status >= 300) {
         try {
           const result = JSON.parse(request.responseText) as { error?: string };
@@ -74,10 +77,12 @@ export function UploadLectureForm({ classId }: { classId: string }) {
     };
     request.onerror = () => {
       setBusy(false);
+      setRequest(null);
       setError("The connection dropped before the upload finished. Please try again.");
     };
     request.onabort = () => {
       setBusy(false);
+      setRequest(null);
       setError("The upload was cancelled.");
     };
     request.send(file);
@@ -104,9 +109,12 @@ export function UploadLectureForm({ classId }: { classId: string }) {
             <div className="h-2 overflow-hidden rounded-full bg-[#dceeff]"><div className="h-full rounded-full bg-[#2786d7] transition-[width]" style={{ width: `${progress}%` }} /></div>
           </div>}
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" disabled={busy}>
-            {busy ? <><LoaderCircle className="animate-spin" />Uploading…</> : <><Upload />Upload and transcribe</>}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={busy}>
+              {busy ? <><LoaderCircle className="animate-spin" />Uploading…</> : <><Upload />Upload and transcribe</>}
+            </Button>
+            {busy && <Button type="button" variant="outline" onClick={() => request?.abort()}>Cancel upload</Button>}
+          </div>
         </form>
       </CardContent>
     </Card>}

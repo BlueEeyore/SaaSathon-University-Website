@@ -3,7 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Trash2 } from "lucide-react";
-import { cancelQueuedLecture } from "@/app/classes/actions";
+import { cancelLecture } from "@/app/classes/actions";
 import { Button } from "@/components/ui/button";
 import type { FormState } from "@/lib/validation";
 
@@ -15,7 +15,7 @@ export function CancelLectureButton({
   lectureTitle: string;
 }) {
   const router = useRouter();
-  const [state, action, pending] = useActionState<FormState, FormData>(cancelQueuedLecture, {});
+  const [state, action, pending] = useActionState<FormState, FormData>(cancelLecture, {});
 
   useEffect(() => {
     if (state.success) router.refresh();
@@ -25,7 +25,7 @@ export function CancelLectureButton({
     <form
       action={action}
       onSubmit={(event) => {
-        if (!window.confirm(`Cancel “${lectureTitle}” and permanently remove its uploaded video?`)) {
+        if (!window.confirm(`Cancel “${lectureTitle}”, stop processing, and permanently remove its video?`)) {
           event.preventDefault();
         }
       }}

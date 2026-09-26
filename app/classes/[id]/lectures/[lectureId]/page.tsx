@@ -32,7 +32,7 @@ export default async function LecturePage({
     supabase.from("classes").select("id, title").eq("id", classId).maybeSingle(),
     supabase.from("lectures").select("*").eq("id", lectureId).eq("class_id", classId).maybeSingle(),
   ]);
-  if (!classItem || !lecture) notFound();
+  if (!classItem || !lecture || lecture.status === "cancelled") notFound();
 
   const { data: transcript } = lecture.status === "ready"
     ? await supabase.from("transcripts").select("language, segments").eq("lecture_id", lectureId).maybeSingle()

@@ -40,18 +40,18 @@ export async function joinClass(_: FormState, form: FormData): Promise<FormState
   redirect(`/classes/${classId}`);
 }
 
-export async function cancelQueuedLecture(_: FormState, form: FormData): Promise<FormState> {
+export async function cancelLecture(_: FormState, form: FormData): Promise<FormState> {
   const lectureId = idSchema.safeParse(form.get("lectureId"));
   if (!lectureId.success) return { error: "This lecture could not be found." };
 
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("cancel_queued_lecture", {
+  const { data, error } = await supabase.rpc("cancel_lecture", {
     target_lecture: lectureId.data,
   });
   if (error) return { error: "We couldn’t cancel this lecture. Please try again." };
   const cancelled = data?.[0];
   if (!cancelled) {
-    return { error: "This lecture has already started processing or is no longer available." };
+    return { error: "This lecture has finished processing or is no longer available." };
   }
 
   const mediaPaths = [
@@ -66,6 +66,13 @@ export async function cancelQueuedLecture(_: FormState, form: FormData): Promise
   const cleanup = await Promise.allSettled(mediaPaths.map((filePath) => rm(filePath, { force: true })));
   if (cleanup.some((result) => result.status === "rejected")) {
     console.error("Some media files could not be removed after lecture cancellation.");
+  }
+
+  const { error: finalizeError } = await supabase.rpc("finalize_cancelled_lecture", {
+    target_lecture: cancelled.lecture_id,
+  });
+  if (finalizeError) {
+    return { error: "The lecture was cancelled, but its queue entry could not be removed. Refresh the page and try again." };
   }
 
   revalidatePath(`/classes/${cancelled.class_id}`);

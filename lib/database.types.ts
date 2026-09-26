@@ -368,10 +368,12 @@ export type Database = {
         Args: never
         Returns: { attempts: number; lecture_id: string }[]
       }
-      cancel_queued_lecture: {
+      cancel_lecture: {
         Args: { target_lecture: string }
         Returns: { class_id: string; lecture_id: string; source_format: string }[]
       }
+      finalize_cancelled_lecture: { Args: { target_lecture: string }; Returns: boolean }
+      complete_transcription_job: { Args: { target_lecture: string }; Returns: boolean }
       shares_class_with: { Args: { target_user: string }; Returns: boolean }
     }
     Enums: {

@@ -31,13 +31,14 @@ const formatMime: Record<string, string> = {
 
 class UploadTooLargeError extends Error {}
 class InvalidVideoError extends Error {}
+class UploadCancelledError extends Error {}
 
 type ProbeResult = {
   format?: { duration?: string; format_name?: string };
   streams?: { codec_type?: string }[];
 };
 
-async function probeVideo(filePath: string): Promise<ProbeResult> {
+async function probeVideo(filePath: string, signal: AbortSignal): Promise<ProbeResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "ffprobe",
@@ -52,6 +53,9 @@ async function probeVideo(filePath: string): Promise<ProbeResult> {
     let stdout = "";
     let stderr = "";
     const timeout = setTimeout(() => child.kill("SIGKILL"), 30_000);
+    const abortProbe = () => child.kill("SIGKILL");
+    signal.addEventListener("abort", abortProbe, { once: true });
+    if (signal.aborted) abortProbe();
     child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
       stdout += chunk;
       if (stdout.length > 64_000) child.kill();
@@ -62,10 +66,16 @@ async function probeVideo(filePath: string): Promise<ProbeResult> {
     });
     child.once("error", (error) => {
       clearTimeout(timeout);
+      signal.removeEventListener("abort", abortProbe);
       reject(error);
     });
     child.once("close", (code) => {
       clearTimeout(timeout);
+      signal.removeEventListener("abort", abortProbe);
+      if (signal.aborted) {
+        reject(new UploadCancelledError());
+        return;
+      }
       if (code !== 0) {
         reject(new InvalidVideoError(stderr.trim() || "This file could not be read as a video."));
         return;
@@ -123,6 +133,7 @@ export async function POST(
   const tempPath = tempMediaPath(`${lectureId}.upload`);
   const finalPath = sourceMediaPath(lectureId, format.data);
   let finalFileExists = false;
+  let registered = false;
   try {
     await Promise.all([
       mkdir(path.dirname(tempPath), { recursive: true }),
@@ -145,9 +156,11 @@ export async function POST(
       limiter,
       createWriteStream(tempPath, { flags: "wx" }),
     );
+    if (request.signal.aborted) throw new UploadCancelledError();
     if (bytes === 0) return jsonError("Choose a video file to upload.", 400);
 
-    const probe = await probeVideo(tempPath);
+    const probe = await probeVideo(tempPath, request.signal);
+    if (request.signal.aborted) throw new UploadCancelledError();
     const formatName = probe.format?.format_name?.toLowerCase() ?? "";
     const containerMatches = format.data === "webm"
       ? formatName.includes("webm")
@@ -168,6 +181,7 @@ export async function POST(
     await rename(tempPath, finalPath);
     finalFileExists = true;
     const sourceBytes = (await stat(finalPath)).size;
+    if (request.signal.aborted) throw new UploadCancelledError();
     const { error } = await supabase.rpc("register_lecture_upload", {
       upload_id: lectureId,
       target_class: classId,
@@ -178,10 +192,21 @@ export async function POST(
       media_duration_ms: Math.round(durationSeconds * 1000),
     });
     if (error) throw new Error(error.message);
+    registered = true;
+    if (request.signal.aborted) throw new UploadCancelledError();
 
     return NextResponse.json({ lectureId, status: "uploaded" }, { status: 201 });
   } catch (error) {
     if (finalFileExists) await rm(finalPath, { force: true }).catch(() => undefined);
+    if (registered) {
+      const { data } = await supabase.rpc("cancel_lecture", { target_lecture: lectureId });
+      if (data?.length) {
+        await supabase.rpc("finalize_cancelled_lecture", { target_lecture: lectureId });
+      }
+    }
+    if (request.signal.aborted || error instanceof UploadCancelledError) {
+      return jsonError("The upload was cancelled.", 400);
+    }
     if (error instanceof UploadTooLargeError) {
       return jsonError("Videos must be 2 GB or smaller.", 413);
     }
