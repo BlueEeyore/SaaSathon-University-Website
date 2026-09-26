@@ -301,7 +301,7 @@ feature over layers of abstractions.
 - **DONE.** Migrations `20261002000000_transcript_discussion.sql`, `20261003000000_transcript_ai_questions.sql`, and `20261004000000_fix_comment_reply_rls_recursion.sql` add member-readable transcript highlights, comment threads, and separate class-visible AI Q&A. The reply policy uses a security-definer parent check to avoid recursive RLS. All are applied locally without a reset.
 - **DONE.** Select word-timed transcript text to highlight it, comment, and reply in a shared side panel. Timestamp controls seek the video and the active transcript follows playback.
 - **DONE.** From a selected passage, members choose either Comment or Ask AI. AI questions and answers are saved separately from comment threads, visible to the class, and use only the selected passage plus nearby transcript. Responses are capped. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
-- **DONE.** Whole-lecture Q&A and class-wide Q&A search transcript segments and save up to eight relevant citations with each answer. The new scope-wide questions are private to their asker under RLS; cited lecture timestamps open at the matching video position. Migration `20261005000000_scope_ai_questions.sql` is applied locally.
+- **DONE.** Whole-lecture and class-wide Q&A send the complete transcript text in order as model context, then save up to eight relevant citations with each answer. The new scope-wide questions are private to their asker under RLS; cited lecture timestamps open at the matching video position. Migration `20261005000000_scope_ai_questions.sql` is applied locally.
 
 ### Phase 4 — Analytics
 

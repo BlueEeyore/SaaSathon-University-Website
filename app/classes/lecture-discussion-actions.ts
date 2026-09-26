@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { scopeQuestionSchema, transcriptQuestionSchema, transcriptReplySchema, transcriptSegmentsSchema, transcriptThreadSchema, type FormState, type TranscriptSegment } from "@/lib/validation";
-import { answerFromSources, rankTranscriptSources } from "@/lib/lecture-ai";
+import { answerFromTranscripts, rankTranscriptSources } from "@/lib/lecture-ai";
 
 export async function createTranscriptThread(_: FormState, form: FormData): Promise<FormState> {
   const input = transcriptThreadSchema.safeParse({
@@ -171,7 +171,7 @@ export async function askAboutScope(_: FormState, form: FormData): Promise<FormS
   if (!sources.length) return { error: "No transcript sections were available to answer from." };
   let answer: string;
   try {
-    answer = await answerFromSources(input.data.question, input.data.scope, sources);
+    answer = await answerFromTranscripts(input.data.question, input.data.scope, transcripts);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "AI couldn’t answer right now. Please try again." };
   }

@@ -43,7 +43,7 @@ export function ScopedAiQuestions({
   return <Card>
     <CardHeader className="border-b pb-4">
       <CardTitle className="flex items-center gap-2 text-base"><Sparkles className="size-4 text-[#1f70b7]" />{title}</CardTitle>
-      <CardDescription className="flex items-center gap-1.5"><LockKeyhole className="size-3" />Your questions and answers are private to you.</CardDescription>
+      <CardDescription className="flex items-center gap-1.5"><LockKeyhole className="size-3" />Private to you. AI uses the complete transcript{scope === "class" ? "s from ready lectures" : ""}; the links point to relevant moments.</CardDescription>
     </CardHeader>
     <CardContent className="space-y-5 p-4">
       <form ref={formRef} action={action} className="space-y-3">
