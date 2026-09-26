@@ -119,6 +119,8 @@ pnpm worker:whisper
 
 Keep that terminal running while you use the app. The upload appears in the class immediately; the worker then converts it, creates the transcript and captions, and marks it ready to watch. Processing can take several minutes on this computer.
 
+Lecturers can cancel a lecture while it is still queued. Cancelling removes the lecture from the class and deletes its uploaded video files. Once the worker starts processing, the lecture can no longer be cancelled from the class page.
+
 The upload handler checks the container and duration with `ffprobe`, requires an audio track, streams to a temporary file, and only registers the lecture after the upload succeeds. Students can read lectures only in classes they have joined.
 
 Without environment configuration, the app shows setup guidance instead of a broken sign-in flow.
