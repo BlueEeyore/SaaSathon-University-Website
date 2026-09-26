@@ -62,7 +62,12 @@ export default async function LoginPage({
               </Button>
               {params.error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">Google sign-in could not start. Check that Google is enabled in your Supabase authentication settings, then try again.</p>}
             </form>
-          ) : null}
+          ) : (
+            <div role="status" className="mt-8 rounded-xl border border-[#d9e7f2] bg-[#f5f8fb] px-4 py-4 text-sm leading-6 text-[#35495c]">
+              <p className="font-semibold text-[#142435]">Google sign-in isn’t configured on this computer yet.</p>
+              <p className="mt-1">Start local Supabase, add its URL and publishable key to <code className="rounded bg-white px-1 py-0.5">.env.local</code>, and configure Google OAuth in the project’s root <code className="rounded bg-white px-1 py-0.5">.env</code>. See the local setup steps in README.md, then restart the app.</p>
+            </div>
+          )}
           <p className="mt-7 text-center text-xs leading-5 text-muted-foreground">Your course account is managed by your university. Ask your lecturer if you need access to a class.</p>
         </section>
       </div>

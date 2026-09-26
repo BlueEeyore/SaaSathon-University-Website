@@ -61,6 +61,16 @@ The first start downloads images and applies the migration automatically. Local 
 
 The local stack provides the database and auth service. Google OAuth credentials are read by local Supabase from the ignored project-root `.env` file; never commit or share the client secret.
 
+Each developer needs their own local Supabase configuration because `.env` and `.env.local` are intentionally not in Git. After `pnpm db:start`, run `pnpm supabase status` and put the displayed API URL and publishable key in `.env.local` (replace the example values). The Google button is hidden until those two public values are valid; the sign-in page now explains this when they are missing.
+
+To enable Google on that developer’s local Supabase:
+
+1. Create a Google OAuth 2.0 Web application client in Google Cloud Console, or use credentials your team has explicitly shared through a secure channel. Add `http://127.0.0.1:55431/auth/v1/callback` as an authorized redirect URI. If Google shows the consent screen in testing mode, add the developer’s Google account as a test user.
+2. Copy `supabase-auth.env.example` to the project-root `.env` if they do not already have one, then replace both placeholders with the OAuth client ID and secret. Keep `.env` private and out of Git.
+3. Restart local Supabase (`pnpm supabase stop`, then `pnpm db:start`) and restart `pnpm dev` after updating `.env.local`. Open `http://localhost:3000/login` and try Google sign-in.
+
+Every local copy has its own database and users. Migrations apply when the developer starts their local Supabase stack; lecturer allowlist entries and class data do not copy from another developer’s machine.
+
 To recreate **only this local database** from the migration:
 
 ```sh
