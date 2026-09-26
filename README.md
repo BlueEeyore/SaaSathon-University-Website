@@ -1,8 +1,8 @@
-# Lecturely — Lecture Capture
+# HighlightEd — Lecture Capture
 
 **A shared space for lectures, transcripts, and class discussion.**
 
-Lecturely is a lecture-capture app built with Next.js, TypeScript, Supabase, and shadcn/ui. Lecturers create classes and share a join code; students join their class spaces. Lecture upload, transcription, discussion, and analytics are the next product slices.
+HighlightEd is a lecture-capture app built with Next.js, TypeScript, Supabase, and shadcn/ui. Lecturers create classes and share a join code; students join their class spaces. Lecture upload, transcription, discussion, and analytics are the next product slices.
 
 [SaaSathon](https://www.saasathon.dev) · [Project plan](PLAN.md) · [Session handoff](HANDOFF.md)
 
@@ -14,7 +14,7 @@ Lecturely is a lecture-capture app built with Next.js, TypeScript, Supabase, and
 - Class membership and lecturer permissions enforced by Postgres row-level security and database functions.
 - Accessible labels, keyboard focus, semantic forms and confirmation before deletion.
 - Typed Supabase clients, explicit grants, row-level security and class access functions.
-- Tailwind v4 and shadcn/ui components with the Lecturely visual theme.
+- Tailwind v4 and shadcn/ui components with the HighlightEd visual theme.
 - A lockfile, CI, a local integration test and Vercel configuration.
 
 Google OAuth credentials are configured in Supabase, not in the browser app. Until that provider is enabled, the sign-in button cannot complete authentication.
@@ -123,7 +123,7 @@ CI runs the same checks on a fresh Linux runner. Browser interaction and visual 
 
 ```text
 app/
-  page.tsx                 Lecturely landing page
+  page.tsx                 HighlightEd landing page
   login/                   Google OAuth sign-in
   auth/callback/           Supabase OAuth callback
   classes/                 Protected dashboard and class detail

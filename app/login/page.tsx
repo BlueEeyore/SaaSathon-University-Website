@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, BookOpenCheck, Captions, MessageSquareText, Play } from "lucide-react";
+import { ArrowLeft, BookOpenCheck, Captions, MessageSquareText } from "lucide-react";
+import { BrandWordmark } from "@/components/brand-wordmark";
 import { Button } from "@/components/ui/button";
 import { signInWithGoogle } from "@/app/login/actions";
 import { isConfigured } from "@/lib/config";
@@ -28,44 +29,41 @@ export default async function LoginPage({
   }
   const params = await searchParams;
   return (
-    <main id="main" className="min-h-screen bg-[#f7f8fa]">
+    <main id="main" className="min-h-screen bg-[#f5f8fb]">
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-[#283d32] text-white"><Play className="size-4 fill-current" /></span>
-          Lecturely
-        </Link>
+        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight"><BrandWordmark /></Link>
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Back to home</Link>
       </header>
       <div className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl items-center gap-12 px-5 pb-12 pt-4 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:gap-20">
         <section className="hidden lg:block">
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#5c7866]">LEARN IN CONTEXT</p>
-          <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-0.05em] text-[#202a24] xl:text-6xl">Every lecture,<br />a little clearer.</h1>
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#1f70b7]">LEARN IN CONTEXT</p>
+          <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-0.05em] text-[#142435] xl:text-6xl">Every lecture,<br />a little clearer.</h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-muted-foreground">Watch, read, and discuss your course material in one calm space built for learning.</p>
           <div className="mt-12 space-y-5">
-            {features.map(({ icon: Icon, label }) => <div key={label} className="flex items-center gap-3 text-sm font-medium text-[#45524a]"><span className="flex size-9 items-center justify-center rounded-xl bg-[#e9eee9] text-[#45624f]"><Icon className="size-4" /></span>{label}</div>)}
+            {features.map(({ icon: Icon, label }) => <div key={label} className="flex items-center gap-3 text-sm font-medium text-[#35495c]"><span className="flex size-9 items-center justify-center rounded-xl bg-[#eaf3fb] text-[#1f70b7]"><Icon className="size-4" /></span>{label}</div>)}
           </div>
-          <div className="relative mt-14 max-w-xl overflow-hidden rounded-[28px] bg-[#dfe8e1] p-8">
-            <div className="absolute -right-10 -top-16 size-64 rounded-full border-[1px] border-[#b8cabb]" />
-            <div className="absolute -right-2 -top-8 size-48 rounded-full border-[1px] border-[#b8cabb]" />
+          <div className="relative mt-14 max-w-xl overflow-hidden rounded-[28px] bg-[#dceeff] p-8">
+            <div className="absolute -right-10 -top-16 size-64 rounded-full border-[1px] border-[#b7d5ef]" />
+            <div className="absolute -right-2 -top-8 size-48 rounded-full border-[1px] border-[#b7d5ef]" />
             <div className="relative flex items-end justify-between">
-              <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#63786a]">YOUR COURSE SPACE</p><p className="mt-2 text-xl font-semibold tracking-tight text-[#26362b]">Learn at your own pace.</p></div>
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/80 text-[#45624f]"><BookOpenCheck className="size-5" /></div>
+              <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1f70b7]">YOUR COURSE SPACE</p><p className="mt-2 text-xl font-semibold tracking-tight text-[#142435]">Learn at your own pace.</p></div>
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/80 text-[#1f70b7]"><BookOpenCheck className="size-5" /></div>
             </div>
           </div>
         </section>
         <section className="mx-auto w-full max-w-md rounded-[28px] border border-black/[0.06] bg-white p-7 shadow-[0_20px_70px_-35px_rgba(23,42,30,0.22)] sm:p-10">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-[#eaf0eb] text-[#45624f]"><BookOpenCheck className="size-5" /></span>
-          <h2 className="mt-7 text-2xl font-semibold tracking-tight">Welcome to Lecturely</h2>
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-[#dceeff] text-[#1f70b7]"><BookOpenCheck className="size-5" /></span>
+          <h2 className="mt-7 text-2xl font-semibold tracking-tight">Welcome to HighlightEd</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">Sign in with your university Google account to continue.</p>
           {configured ? (
             <form action={signInWithGoogle} className="mt-8">
-              <Button type="submit" variant="outline" size="xl" className="w-full rounded-xl border-[#dfe3df] font-semibold shadow-none hover:bg-[#f7f8f7]">
+              <Button type="submit" variant="outline" size="xl" className="w-full rounded-xl border-[#d1deea] font-semibold shadow-none hover:bg-[#f5f8fb]">
                 <GoogleMark /> Continue with Google
               </Button>
               {params.error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">Google sign-in could not start. Check that Google is enabled in your Supabase authentication settings, then try again.</p>}
             </form>
           ) : (
-            <div className="mt-8 rounded-2xl border border-dashed border-[#d8ded9] bg-[#f8faf8] p-4 text-sm leading-6 text-muted-foreground">Add the Supabase URL and publishable key to connect authentication. Google sign-in can be enabled in Supabase when you are ready.</div>
+            <div className="mt-8 rounded-2xl border border-dashed border-[#d1deea] bg-[#f5f8fb] p-4 text-sm leading-6 text-muted-foreground">Add the Supabase URL and publishable key to connect authentication. Google sign-in can be enabled in Supabase when you are ready.</div>
           )}
           <p className="mt-7 text-center text-xs leading-5 text-muted-foreground">Your course account is managed by your university. Ask your lecturer if you need access to a class.</p>
         </section>

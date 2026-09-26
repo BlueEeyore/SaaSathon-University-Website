@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: { default: "Lecture Capture", template: "%s · Lecture Capture" },
+  title: { default: "HighlightEd", template: "%s · HighlightEd" },
   description: "A better way to learn from every lecture.",
 };
 export default function RootLayout({

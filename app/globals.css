@@ -4,27 +4,27 @@
 @theme {
   --color-black: #000000;
   --color-charcoal: #242424;
-  --color-blue: #2395ff;
-  --color-off-white: #f0f0f0;
+  --color-blue: #2786d7;
+  --color-off-white: #f5f8fb;
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 :root {
-  --background: #ffffff;
-  --foreground: #202a24;
+  --background: #f5f8fb;
+  --foreground: #142435;
   --card: #ffffff;
-  --card-foreground: #202a24;
-  --primary: #314f3b;
+  --card-foreground: #142435;
+  --primary: #2786d7;
   --primary-foreground: #ffffff;
-  --secondary: #edf1ed;
-  --secondary-foreground: #314f3b;
-  --muted: #f3f5f3;
-  --muted-foreground: #707970;
-  --accent: #eaf0eb;
-  --accent-foreground: #314f3b;
+  --secondary: #eaf3fb;
+  --secondary-foreground: #2786d7;
+  --muted: #eef3f8;
+  --muted-foreground: #607184;
+  --accent: #dceeff;
+  --accent-foreground: #2786d7;
   --destructive: #c73b3b;
-  --border: #e5e9e5;
-  --input: #dce2dc;
-  --ring: #78917e;
+  --border: #dce5ee;
+  --input: #cfdbe7;
+  --ring: #2786d7;
 }
 @theme inline {
   --color-background: var(--background);
