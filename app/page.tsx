@@ -36,7 +36,7 @@ export default function Home() {
   return (
     <main id="main" className="min-h-screen overflow-clip bg-[#f5f8fb] text-[#142435]">
       <header className="relative z-10 w-full">
-        <div className="relative mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:h-[88px] sm:px-8">
+        <div className="relative mx-auto flex h-[64px] max-w-7xl items-center justify-between px-5 sm:h-[72px] sm:px-8">
           <Link href="/" aria-label="HighlightEd home" className="relative z-10">
             <BrandWordmark />
           </Link>
@@ -56,7 +56,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-24 pt-12 sm:px-8 sm:pb-32 sm:pt-16 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative mx-auto grid max-w-7xl items-start gap-12 px-5 pb-24 pt-4 sm:px-8 sm:pb-32 sm:pt-6 lg:min-h-[calc(100svh-72px)] lg:grid-cols-[1.05fr_0.95fr]">
         <div className="scroll-reveal relative z-10">
           <BadgeLine />
           <h1 className="mt-6 max-w-3xl text-[clamp(3.25rem,7vw,6.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">
