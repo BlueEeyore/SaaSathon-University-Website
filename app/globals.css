@@ -169,13 +169,12 @@
 }
 
 .transcript-story {
-  min-height: 230svh;
   view-timeline-name: --transcript-story;
   view-timeline-axis: block;
 }
 
 .transcript-story__stage {
-  min-height: 100svh;
+  min-height: auto;
 }
 
 @supports (animation-timeline: view()) {
@@ -202,13 +201,6 @@
   inset: 8%;
   border-radius: 50%;
   background: radial-gradient(circle, #dceeff 0%, rgb(220 238 255 / 0%) 74%);
-}
-
-@media (min-width: 768px) {
-  .transcript-story__stage {
-    position: sticky;
-    top: 0;
-  }
 }
 
 @media (max-width: 767px) {
