@@ -88,6 +88,12 @@ export type Database = {
         Update: { answer?: string; created_at?: string; highlight_id?: string; id?: string; lecture_id?: string; question?: string; user_id?: string }
         Relationships: []
       }
+      scope_ai_questions: {
+        Row: { answer: string; class_id: string; created_at: string; id: string; lecture_id: string | null; question: string; scope: string; sources: Json; user_id: string }
+        Insert: { answer: string; class_id: string; created_at?: string; id?: string; lecture_id?: string | null; question: string; scope: string; sources: Json; user_id: string }
+        Update: { answer?: string; class_id?: string; created_at?: string; id?: string; lecture_id?: string | null; question?: string; scope?: string; sources?: Json; user_id?: string }
+        Relationships: []
+      }
       class_roster: {
         Row: {
           claimed_at: string | null
@@ -371,6 +377,10 @@ export type Database = {
       }
       create_transcript_ai_question: {
         Args: { ai_answer: string; selection_end_ms: number; selection_quote: string; selection_start_ms: number; student_question: string; target_lecture: string }
+        Returns: string
+      }
+      create_scope_ai_question: {
+        Args: { ai_answer: string; answer_sources: Json; student_question: string; target_class: string; target_lecture: string | null; target_scope: string }
         Returns: string
       }
       is_class_lecturer: { Args: { target_class: string }; Returns: boolean }

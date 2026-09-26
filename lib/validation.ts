@@ -182,6 +182,21 @@ export const transcriptQuestionSchema = z.object({
   path: ["endMs"],
 });
 
+export const scopeQuestionSchema = z.object({
+  scope: z.enum(["lecture", "class"]),
+  targetId: idSchema,
+  question: z.string().trim().min(1, "Write a question first.").max(1200, "Keep questions under 1,201 characters."),
+});
+
+export const lectureAiSourceSchema = z.object({
+  lecture_id: idSchema,
+  title: z.string().min(1).max(120),
+  start_ms: milliseconds,
+  end_ms: milliseconds,
+  text: z.string().min(1).max(600),
+});
+export const scopedAiSourcesSchema = z.array(lectureAiSourceSchema).min(1).max(8);
+
 // --- Engagement events ---
 
 export const watchEventTypeSchema = z.enum([

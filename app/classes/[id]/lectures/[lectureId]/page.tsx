@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { signOut } from "@/app/login/actions";
 import { requireUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/config";
-import { idSchema, transcriptSegmentsSchema } from "@/lib/validation";
+import { idSchema, scopedAiSourcesSchema, transcriptSegmentsSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +19,15 @@ function formatDuration(durationMs: number) {
 }
 
 export default async function LecturePage({
-  params,
+  params, searchParams,
 }: {
   params: Promise<{ id: string; lectureId: string }>;
+  searchParams: Promise<{ t?: string }>;
 }) {
   if (!isConfigured()) redirect("/login");
   const { id: classId, lectureId } = await params;
+  const { t } = await searchParams;
+  const parsedTime = t && /^\d{1,9}$/.test(t) ? Number(t) : undefined;
   if (!idSchema.safeParse(classId).success || !idSchema.safeParse(lectureId).success) notFound();
 
   const { supabase, email } = await requireUser();
@@ -33,19 +36,25 @@ export default async function LecturePage({
     supabase.from("lectures").select("*").eq("id", lectureId).eq("class_id", classId).maybeSingle(),
   ]);
   if (!classItem || !lecture || lecture.status === "cancelled") notFound();
+  const initialTimeMs = parsedTime != null && parsedTime <= lecture.duration_ms ? parsedTime : undefined;
 
   const { data: transcript } = lecture.status === "ready"
     ? await supabase.from("transcripts").select("language, segments").eq("lecture_id", lectureId).maybeSingle()
     : { data: null };
   const parsedSegments = transcriptSegmentsSchema.safeParse(transcript?.segments);
   const segments = parsedSegments.success ? parsedSegments.data : [];
-  const [{ data: highlights }, { data: comments }, { data: aiQuestions }] = segments.length
+  const [{ data: highlights }, { data: comments }, { data: aiQuestions }, { data: lectureAiRows }] = segments.length
     ? await Promise.all([
       supabase.from("transcript_highlights").select("id, lecture_id, start_ms, end_ms, quote, user_id").eq("lecture_id", lectureId).order("start_ms"),
       supabase.from("transcript_comments").select("id, lecture_id, highlight_id, parent_id, author_id, body, created_at").eq("lecture_id", lectureId).order("created_at"),
       supabase.from("transcript_ai_questions").select("id, lecture_id, highlight_id, user_id, question, answer, created_at").eq("lecture_id", lectureId).order("created_at", { ascending: false }),
+      supabase.from("scope_ai_questions").select("id, question, answer, sources, created_at").eq("lecture_id", lectureId).eq("scope", "lecture").order("created_at", { ascending: false }),
     ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
+  const lectureAiQuestions = (lectureAiRows ?? []).flatMap((row) => {
+    const sources = scopedAiSourcesSchema.safeParse(row.sources);
+    return sources.success ? [{ ...row, sources: sources.data }] : [];
+  });
   const profileIds = [...new Set([
     ...(comments ?? []).map((comment) => comment.author_id),
     ...(aiQuestions ?? []).map((question) => question.user_id),
@@ -69,12 +78,15 @@ export default async function LecturePage({
       </div>
       {lecture.status === "ready" ? <LecturePlayer
         lectureId={lectureId}
+        classId={classId}
+        initialTimeMs={initialTimeMs}
         title={lecture.title}
         segments={segments}
         language={transcript?.language ?? "en"}
         highlights={highlights ?? []}
         comments={comments ?? []}
         aiQuestions={aiQuestions ?? []}
+        scopeAiQuestions={lectureAiQuestions}
         profiles={profiles ?? []}
       /> : <div className="mx-auto max-w-2xl space-y-4">
         <LectureProcessingStatus status={lecture.status} />

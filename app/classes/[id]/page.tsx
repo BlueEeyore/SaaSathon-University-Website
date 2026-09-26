@@ -8,10 +8,11 @@ import { signOut } from "@/app/login/actions";
 import { CopyCodeButton } from "@/components/copy-code-button";
 import { CancelLectureButton } from "@/components/cancel-lecture-button";
 import { UploadLectureForm } from "@/components/upload-lecture-form";
+import { ScopedAiQuestions } from "@/components/scoped-ai-questions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { idSchema } from "@/lib/validation";
+import { idSchema, scopedAiSourcesSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,11 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
   if (!currentMembership) notFound();
   const isLecturer = currentMembership.role === "lecturer";
   const { data: lectures } = await supabase.from("lectures").select("id, title, duration_ms, status, created_at, error_message").eq("class_id", id).neq("status", "cancelled").order("created_at", { ascending: false });
+  const { data: classAiRows } = await supabase.from("scope_ai_questions").select("id, question, answer, sources, created_at").eq("class_id", id).eq("scope", "class").order("created_at", { ascending: false });
+  const classAiQuestions = (classAiRows ?? []).flatMap((row) => {
+    const sources = scopedAiSourcesSchema.safeParse(row.sources);
+    return sources.success ? [{ ...row, sources: sources.data }] : [];
+  });
   const { data: members, count } = await supabase.from("class_members").select("user_id, role", { count: "exact" }).eq("class_id", id).eq("role", "student").order("joined_at", { ascending: true }).limit(8);
   const { data: profiles } = isLecturer && members?.length
     ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", members.map((member) => member.user_id))
@@ -46,6 +52,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section>
+          <div className="mb-6"><ScopedAiQuestions scope="class" targetId={id} classId={id} questions={classAiQuestions} available={Boolean(lectures?.some((lecture) => lecture.status === "ready"))} /></div>
           <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h2 className="text-lg font-semibold tracking-tight">Lecture library</h2><p className="mt-1 text-sm text-muted-foreground">Watch, read, and discuss your course recordings.</p></div>{isLecturer && <UploadLectureForm classId={id} />}</div>
           {lectures?.length ? <div className="space-y-3">{lectures.map((lecture) => <Card key={lecture.id} className="transition-colors hover:border-[#b7d5ef]"><CardContent className="flex flex-col justify-between gap-3 p-4 sm:flex-row sm:items-center sm:p-5"><Link href={`/classes/${id}/lectures/${lecture.id}`} className="flex min-w-0 flex-1 flex-col justify-between gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-row sm:items-center"><div className="flex min-w-0 items-center gap-4"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#eaf3fb] text-[#1f70b7]"><FileVideo2 className="size-5" /></span><div className="min-w-0"><p className="truncate font-medium">{lecture.title}</p><p className="mt-1 text-xs text-muted-foreground">{Math.floor(lecture.duration_ms / 60000)} min · Added {new Date(lecture.created_at).toLocaleDateString("en", { month: "short", day: "numeric" })}</p></div></div><div className="flex shrink-0 items-center gap-3"><Badge variant={lecture.status === "ready" ? "secondary" : "outline"} className={lecture.status === "failed" ? "border-red-200 bg-red-50 text-red-700" : undefined}>{lecture.status === "ready" ? "Ready to watch" : lecture.status === "failed" ? "Processing failed" : lecture.status === "uploaded" ? "Queued" : lecture.status === "normalizing" ? "Preparing video" : lecture.status === "transcribing" ? "Transcribing" : lecture.status}</Badge><span aria-hidden="true" className="text-muted-foreground">↗</span></div></Link>{isLecturer && ["uploaded", "normalizing", "transcribing"].includes(lecture.status) && <CancelLectureButton lectureId={lecture.id} lectureTitle={lecture.title} />}</CardContent>{lecture.status === "failed" && lecture.error_message && <p className="px-5 pb-4 text-sm text-destructive">{lecture.error_message}</p>}</Card>)}</div> : <Card className="border-dashed shadow-none"><CardContent className="flex min-h-[280px] flex-col items-center justify-center px-6 py-12 text-center"><span className="flex size-14 items-center justify-center rounded-2xl bg-[#eaf3fb] text-[#1f70b7]"><FileVideo2 className="size-6" /></span><h3 className="mt-5 text-base font-semibold">{isLecturer ? "Your lecture library is ready" : "No lectures yet"}</h3><p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{isLecturer ? "Upload a recording and it will appear here after processing." : "Your lecturer has not added a recording yet. New lectures will appear here."}</p></CardContent></Card>}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">{upcoming.map(({ icon: Icon, title, text }) => <Card key={title} className="shadow-none"><CardContent className="flex gap-3 p-4"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf3fb] text-[#1f70b7]"><Icon className="size-4" /></span><div><p className="text-sm font-medium">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div></CardContent></Card>)}</div>

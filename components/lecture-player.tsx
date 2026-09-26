@@ -3,6 +3,9 @@
 import { useCallback, useRef, useState } from "react";
 import type { TranscriptSegment } from "@/lib/validation";
 import { TranscriptDiscussion } from "@/components/transcript-discussion";
+import { ScopedAiQuestions } from "@/components/scoped-ai-questions";
+import type { lectureAiSourceSchema } from "@/lib/validation";
+import type { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Highlight = { id: string; lecture_id: string; start_ms: number; end_ms: number; quote: string; user_id: string };
@@ -18,6 +21,9 @@ export function LecturePlayer({
   highlights,
   comments,
   aiQuestions,
+  scopeAiQuestions,
+  classId,
+  initialTimeMs,
   profiles,
 }: {
   lectureId: string;
@@ -27,6 +33,9 @@ export function LecturePlayer({
   highlights: Highlight[];
   comments: Comment[];
   aiQuestions: AiQuestion[];
+  scopeAiQuestions: { id: string; question: string; answer: string; sources: z.infer<typeof lectureAiSourceSchema>[]; created_at: string }[];
+  classId: string;
+  initialTimeMs?: number;
   profiles: Person[];
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -55,6 +64,9 @@ export function LecturePlayer({
           preload="metadata"
           onTimeUpdate={updateTranscript}
           aria-label={title}
+          onLoadedMetadata={() => {
+            if (initialTimeMs != null && videoRef.current) videoRef.current.currentTime = initialTimeMs / 1000;
+          }}
         >
           <source src={`/api/lectures/${lectureId}/video`} type="video/mp4" />
           <track
@@ -84,5 +96,6 @@ export function LecturePlayer({
       activeIndex={activeIndex}
       onSeek={seekTo}
     />
+    <ScopedAiQuestions scope="lecture" targetId={lectureId} classId={classId} questions={scopeAiQuestions} />
   </div>;
 }

@@ -3,7 +3,7 @@
 Supersedes the original feature sketch. Feature *intent* is preserved in "Product scope";
 everything under "Decisions" is settled and should not be re-litigated during implementation.
 
-Status: **in progress.** Foundations, identity/classes, upload/transcription, and transcript discussions with contextual AI replies are implemented. Analytics remain ahead.
+Status: **in progress.** Foundations, identity/classes, upload/transcription, transcript discussions, and private lecture/class AI Q&A are implemented. Analytics remain ahead.
 
 ---
 
@@ -11,9 +11,9 @@ Status: **in progress.** Foundations, identity/classes, upload/transcription, an
 
 Lecturers upload a lecture recording. The site transcribes it and serves a transcript that
 follows the video, with captions. Lecturers manage their classes and students. Students and
-lecturers highlight the transcript, comment on it, and reply to each other. Lecturers get an
-engagement analytics dashboard. Later, AI summarises lectures and answers questions across a
-class.
+lecturers highlight the transcript, comment on it, and reply to each other. They can ask private
+AI questions about a lecture or an entire class, with transcript passages cited. Lecturers get an
+engagement analytics dashboard.
 
 ### Demo spine (must work end to end)
 
@@ -26,7 +26,7 @@ class.
 ### Phase 2 (after the demo works)
 
 - AI lecture overview from the transcript.
-- AI Q&A across a class, returning relevant transcript sections.
+- ~~AI Q&A across a class, returning relevant transcript sections.~~ **DONE.** Class and lecture Q&A retrieve relevant transcript sections; citations link to the source timestamp. These scope-wide questions are private to the asker.
 - CSV roster import. Committed, not optional — just not demo-critical, since the join code covers
   enrolment for the demo.
 - Real Moodle wiring (LTI 1.3 or REST), behind the provider interface built in Phase 1.
@@ -177,6 +177,7 @@ form data.
 | `highlights` | `lecture_id`, `user_id`, `start_ms`, `end_ms`, `quote`, `segment_indexes` | `quote` keeps the highlight meaningful and survives transcript re-rendering. |
 | `comments` | `lecture_id`, `highlight_id?`, `parent_id?`, `author_id`, `body`, `start_ms?`, `end_ms?` | `parent_id` gives threading. |
 | `transcript_ai_questions` | `lecture_id`, `highlight_id`, `user_id`, `question`, `answer` | Class-visible AI Q&A, stored separately from comment threads. |
+| `scope_ai_questions` | `class_id`, `lecture_id?`, `scope`, `user_id`, `question`, `answer`, `sources` | Private lecture-wide and class-wide Q&A with transcript citations. |
 | `watch_events` | `lecture_id`, `user_id`, `session_id`, `type`, `position_ms`, `duration_ms`, `watched_ms` | High volume. Insert-only. Students insert their own; **not** directly selectable by lecturers. |
 
 ### Enrollment: join code and roster
@@ -300,6 +301,7 @@ feature over layers of abstractions.
 - **DONE.** Migrations `20261002000000_transcript_discussion.sql`, `20261003000000_transcript_ai_questions.sql`, and `20261004000000_fix_comment_reply_rls_recursion.sql` add member-readable transcript highlights, comment threads, and separate class-visible AI Q&A. The reply policy uses a security-definer parent check to avoid recursive RLS. All are applied locally without a reset.
 - **DONE.** Select word-timed transcript text to highlight it, comment, and reply in a shared side panel. Timestamp controls seek the video and the active transcript follows playback.
 - **DONE.** From a selected passage, members choose either Comment or Ask AI. AI questions and answers are saved separately from comment threads, visible to the class, and use only the selected passage plus nearby transcript. Responses are capped. Configure `OPENAI_API_KEY` in `.env.local`; `OPENAI_MODEL` defaults to `gpt-6-luna`.
+- **DONE.** Whole-lecture Q&A and class-wide Q&A search transcript segments and save up to eight relevant citations with each answer. The new scope-wide questions are private to their asker under RLS; cited lecture timestamps open at the matching video position. Migration `20261005000000_scope_ai_questions.sql` is applied locally.
 
 ### Phase 4 — Analytics
 

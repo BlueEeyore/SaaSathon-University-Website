@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import { transcriptQuestionSchema, transcriptReplySchema, transcriptSegmentsSchema, transcriptThreadSchema, type FormState } from "@/lib/validation";
+import { scopeQuestionSchema, transcriptQuestionSchema, transcriptReplySchema, transcriptSegmentsSchema, transcriptThreadSchema, type FormState, type TranscriptSegment } from "@/lib/validation";
+import { answerFromSources, rankTranscriptSources } from "@/lib/lecture-ai";
 
 export async function createTranscriptThread(_: FormState, form: FormData): Promise<FormState> {
   const input = transcriptThreadSchema.safeParse({
@@ -128,4 +129,67 @@ export async function askAboutTranscript(_: FormState, form: FormData): Promise<
   if (error) return { error: "AI answered, but the response could not be saved to the class Q&A." };
   revalidatePath("/classes/[id]/lectures/[lectureId]", "page");
   return { success: "AI answer added to class Q&A." };
+}
+
+export async function askAboutScope(_: FormState, form: FormData): Promise<FormState> {
+  const input = scopeQuestionSchema.safeParse({
+    scope: form.get("scope"),
+    targetId: form.get("targetId"),
+    question: form.get("question"),
+  });
+  if (!input.success) return { error: input.error.issues[0]?.message ?? "Check your question." };
+
+  const { supabase } = await requireUser();
+  let classId = input.data.targetId;
+  let targetLecture: string | null = null;
+  let transcripts: Array<{ lectureId: string; title: string; segments: TranscriptSegment[] }> = [];
+
+  if (input.data.scope === "lecture") {
+    const { data: lecture } = await supabase.from("lectures").select("id, class_id, title, status").eq("id", input.data.targetId).maybeSingle();
+    if (!lecture || lecture.status !== "ready") return { error: "This lecture isn’t ready for questions yet." };
+    classId = lecture.class_id;
+    targetLecture = lecture.id;
+    const { data: transcript } = await supabase.from("transcripts").select("segments").eq("lecture_id", lecture.id).maybeSingle();
+    const parsed = transcriptSegmentsSchema.safeParse(transcript?.segments);
+    if (!parsed.success || parsed.data.length === 0) return { error: "The lecture transcript isn’t available." };
+    transcripts = [{ lectureId: lecture.id, title: lecture.title, segments: parsed.data }];
+  } else {
+    const { data: classItem } = await supabase.from("classes").select("id").eq("id", input.data.targetId).maybeSingle();
+    if (!classItem) return { error: "This class isn’t available." };
+    const { data: lectures } = await supabase.from("lectures").select("id, title").eq("class_id", classItem.id).eq("status", "ready");
+    if (!lectures?.length) return { error: "This class doesn’t have any transcribed lectures yet." };
+    const { data: transcriptRows } = await supabase.from("transcripts").select("lecture_id, segments").in("lecture_id", lectures.map((lecture) => lecture.id));
+    const titles = new Map(lectures.map((lecture) => [lecture.id, lecture.title]));
+    transcripts = (transcriptRows ?? []).flatMap((row) => {
+      const parsed = transcriptSegmentsSchema.safeParse(row.segments);
+      const title = titles.get(row.lecture_id);
+      return parsed.success && title ? [{ lectureId: row.lecture_id, title, segments: parsed.data }] : [];
+    });
+  }
+
+  const sources = rankTranscriptSources(input.data.question, transcripts);
+  if (!sources.length) return { error: "No transcript sections were available to answer from." };
+  let answer: string;
+  try {
+    answer = await answerFromSources(input.data.question, input.data.scope, sources);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "AI couldn’t answer right now. Please try again." };
+  }
+
+  const { error } = await supabase.rpc("create_scope_ai_question", {
+    target_class: classId,
+    target_lecture: targetLecture,
+    target_scope: input.data.scope,
+    student_question: input.data.question,
+    ai_answer: answer,
+    answer_sources: sources as unknown as import("@/lib/database.types").Json,
+  });
+  if (error) {
+    console.error("Could not save scoped AI question.", { code: error.code, message: error.message });
+    return { error: "AI answered, but the response couldn’t be saved. Please try again." };
+  }
+
+  revalidatePath(`/classes/${classId}`);
+  if (targetLecture) revalidatePath(`/classes/${classId}/lectures/${targetLecture}`);
+  return { success: "Your private AI answer is ready." };
 }
