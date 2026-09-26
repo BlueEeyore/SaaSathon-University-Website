@@ -43,7 +43,10 @@ export async function replyToTranscriptThread(_: FormState, form: FormData): Pro
     author_id: userId,
     body: input.data.body,
   });
-  if (error) return { error: "We couldn’t post your reply. Please try again." };
+  if (error) {
+    console.error("Could not save transcript reply.", { code: error.code, message: error.message });
+    return { error: "We couldn’t post your reply. Please try again." };
+  }
 
   revalidatePath("/classes/[id]/lectures/[lectureId]", "page");
   return { success: "Reply added." };

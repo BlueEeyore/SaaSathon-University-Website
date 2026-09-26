@@ -376,6 +376,7 @@ export type Database = {
       is_class_lecturer: { Args: { target_class: string }; Returns: boolean }
       is_class_member: { Args: { target_class: string }; Returns: boolean }
       is_lecture_member: { Args: { target_lecture: string }; Returns: boolean }
+      is_transcript_thread_root: { Args: { target_comment: string; target_lecture: string }; Returns: boolean }
       my_profile_email: { Args: never; Returns: string }
       redeem_join_code: { Args: { code: string }; Returns: string }
       register_lecture_upload: {
