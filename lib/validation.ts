@@ -51,6 +51,8 @@ export const joinCodeSchema = z
     "That join code is not valid. Codes are 10 characters.",
   );
 
+export const joinClassSchema = z.object({ code: joinCodeSchema });
+
 export const classSchema = z.object({
   title: z
     .string()

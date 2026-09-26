@@ -1,100 +1,28 @@
 import Link from "next/link";
-import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Captions, CirclePlay, MessageSquareText, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isConfigured } from "@/lib/config";
 import { SetupNotice } from "@/components/setup-notice";
-const primitives = [
-  [
-    "01",
-    "A way in.",
-    "Email sign-in. A private workspace. A session that follows you from page to page.",
-  ],
-  [
-    "02",
-    "A place for ideas.",
-    "Create, edit and delete your ideas. Your account owns your data, all the way down to the database.",
-  ],
-  [
-    "03",
-    "Room to build.",
-    "A small, typed codebase. Clear boundaries. Make it yours and ship something people want.",
-  ],
+
+const features = [
+  { icon: CirclePlay, number: "01", title: "Watch together", body: "Lecture recordings with a transcript that keeps pace, so it is easy to follow along." },
+  { icon: Captions, number: "02", title: "Find the moment", body: "Jump to the part you need with searchable, time-aligned captions." },
+  { icon: MessageSquareText, number: "03", title: "Learn out loud", body: "Highlight an idea, ask a question, and keep the conversation with the lecture." },
 ];
+
 export default function Home() {
-  return (
-    <>
-      <header className="grid-container flex items-center justify-between gap-4 py-6">
-        <Link href="/" className="font-semibold tracking-tight">
-          SaaSathon / Starter
-        </Link>
-        <a
-          href="https://github.com/justus-lumin/SaaSathon-Template"
-          className="inline-flex items-center gap-2 text-sm underline-offset-4 hover:underline"
-        >
-          View source <ArrowUpRight className="size-4" aria-hidden="true" />
-        </a>
-      </header>
-      <main id="main">
-        <section className="grid-container bg-blue py-16 lg:py-24">
-          <div className="grid-12 gap-y-10">
-            <div className="col-span-12 lg:col-span-8">
-              <p className="text-body-2 mb-8">NEXT.JS · SUPABASE · VERCEL</p>
-              <h1 className="text-h1 max-w-4xl">
-                Start small.
-                <br />
-                Build something
-                <br />
-                that matters.
-              </h1>
-            </div>
-            <div className="col-span-12 flex flex-col items-start justify-end gap-7 lg:col-span-4">
-              <p className="text-body-1 max-w-sm">
-                Your next idea starts here. Sign in, make it tangible, then make
-                it yours.
-              </p>
-              <Button asChild size="xl">
-                <Link href="/ideas">
-                  Open your workspace <ArrowRight aria-hidden="true" />
-                </Link>
-              </Button>
-              <p className="text-sm">One example. The essentials, connected.</p>
-            </div>
-          </div>
-        </section>
-        <section
-          className="grid-container py-12 lg:py-20"
-          aria-label="What is included"
-        >
-          <div className="grid-12 gap-y-5">
-            {primitives.map(([number, title, body]) => (
-              <article
-                key={number}
-                className="col-span-12 flex min-h-64 flex-col rounded-[20px] bg-off-white p-6 lg:col-span-4 lg:p-8"
-              >
-                <span className="text-sm text-charcoal">{number}</span>
-                <h2 className="text-h3 mt-10">{title}</h2>
-                <p className="mt-4 max-w-sm text-sm leading-6 text-charcoal">
-                  {body}
-                </p>
-              </article>
-            ))}
-          </div>
-          {!isConfigured() && (
-            <div className="mt-6">
-              <SetupNotice />
-            </div>
-          )}
-        </section>
-      </main>
-      <footer className="grid-container flex flex-wrap justify-between gap-4 border-t border-black/10 py-6 text-sm">
-        <span>Built for a good starting point.</span>
-        <a
-          href="https://www.saasathon.dev"
-          className="underline underline-offset-4"
-        >
-          Made for SaaSathon
-        </a>
-      </footer>
-    </>
-  );
+  return <main id="main" className="min-h-screen overflow-hidden bg-[#f7f8fa] text-[#202a24]">
+    <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8"><Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight"><span className="flex size-9 items-center justify-center rounded-xl bg-[#314f3b] text-white"><BookOpenCheck className="size-[18px]" /></span>Lecturely</Link><nav className="flex items-center gap-3"><a href="#how-it-works" className="hidden px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:block">How it works</a><Button asChild size="sm" className="rounded-full px-5"><Link href="/login">Sign in <ArrowRight /></Link></Button></nav></header>
+    <section className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative z-10"><BadgeLine /><h1 className="mt-6 max-w-3xl text-[clamp(3.25rem,7vw,6.5rem)] font-semibold leading-[0.97] tracking-[-0.065em]">Make every<br /><span className="text-[#68816d]">lecture click.</span></h1><p className="mt-7 max-w-lg text-base leading-7 text-[#707970] sm:text-lg sm:leading-8">A quieter, clearer place to watch your lectures, follow along with transcripts, and ask the question you have been holding onto.</p><div className="mt-8 flex flex-wrap items-center gap-3"><Button asChild size="xl" className="h-12 rounded-full px-6"><Link href="/login">Get started <ArrowRight /></Link></Button><a href="#how-it-works" className="rounded-full px-5 py-3 text-sm font-medium text-[#4c5e51] hover:bg-white">See how it works</a></div><div className="mt-9 flex items-center gap-3 text-xs text-[#7a837b]"><span className="flex -space-x-2"><span className="flex size-7 items-center justify-center rounded-full border-2 border-[#f7f8fa] bg-[#d9e6da] text-[10px] font-semibold text-[#45624f]">S</span><span className="flex size-7 items-center justify-center rounded-full border-2 border-[#f7f8fa] bg-[#f1dfc3] text-[10px] font-semibold text-[#80613c]">L</span><span className="flex size-7 items-center justify-center rounded-full border-2 border-[#f7f8fa] bg-[#dce3ef] text-[10px] font-semibold text-[#53637d]">Q</span></span>Built for students and lecturers</div></div>
+      <div className="relative mx-auto w-full max-w-[570px] lg:ml-auto"><div aria-hidden="true" className="absolute -right-20 -top-20 size-[500px] rounded-full bg-[#e7eee8] blur-3xl" /><div className="relative rounded-[30px] border border-white bg-white p-3 shadow-[0_35px_100px_-50px_rgba(35,55,40,0.32)] sm:p-5"><div className="overflow-hidden rounded-[22px] bg-[#f4f6f4]"><div className="flex items-center justify-between border-b border-black/[0.05] bg-white px-5 py-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#819085]">BIO 204 · WEEK 03</p><p className="mt-1 text-sm font-semibold">Cell signalling pathways</p></div><span className="rounded-full bg-[#e9f0ea] px-3 py-1 text-[10px] font-medium text-[#4b6a52]">Transcript on</span></div><div className="relative flex aspect-[1.72] items-center justify-center overflow-hidden bg-[#263c31]"><div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(ellipse_at_72%_22%,rgba(206,224,204,0.26),transparent_32%),radial-gradient(ellipse_at_21%_85%,rgba(133,167,137,0.22),transparent_40%)]" /><div aria-hidden="true" className="absolute right-[14%] top-[18%] size-40 rounded-full border border-white/10" /><div aria-hidden="true" className="absolute right-[20%] top-[25%] size-28 rounded-full border border-white/10" /><span className="relative flex size-14 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur"><CirclePlay className="size-7" /></span><span className="absolute bottom-4 left-4 text-xs font-medium text-white/75">08:42 <span className="mx-2">/</span> 38:16</span><div className="absolute bottom-5 left-[22%] right-5 h-1 rounded-full bg-white/25"><div className="h-full w-[23%] rounded-full bg-[#c4d6c5]" /></div></div><div className="space-y-3 p-5"><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a938b]"><span className="size-1.5 rounded-full bg-[#6f9274]" /> FOLLOWING TRANSCRIPT</div><p className="text-xs leading-6 text-[#899189]">The cell receives a signal through a receptor on its surface. That signal is then carried through a series of proteins...</p><p className="rounded-lg bg-[#eaf0eb] px-3 py-2.5 text-xs leading-5 text-[#344a38]"><span className="mr-2 font-semibold text-[#69806b]">08:42</span>Each step amplifies the original message, allowing the cell to respond with precision.</p><div className="flex items-center gap-2 pt-1"><span className="flex size-6 items-center justify-center rounded-full bg-[#e7c795] text-[9px] font-semibold text-[#765832]">M</span><p className="text-[10px] text-[#727b73]">“Amplifies the original message”</p><MessageSquareText className="ml-auto size-3.5 text-[#819085]" /></div></div></div></div><div className="absolute -bottom-5 -left-5 hidden items-center gap-3 rounded-2xl border border-white bg-white px-4 py-3 shadow-lg sm:flex"><span className="flex size-9 items-center justify-center rounded-xl bg-[#eaf0eb] text-[#45624f]"><Captions className="size-4" /></span><div><p className="text-xs font-semibold">Always in sync</p><p className="mt-0.5 text-[10px] text-muted-foreground">Transcript follows playback</p></div></div></div>
+    </section>
+    <section id="how-it-works" className="border-y border-black/[0.05] bg-white py-16 sm:py-20"><div className="mx-auto max-w-7xl px-5 sm:px-8"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#69806b]">LEARN IN CONTEXT</p><h2 className="mt-3 text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">Everything around the lecture.</h2></div><p className="max-w-sm text-sm leading-6 text-muted-foreground">Your class, recordings, transcripts, and conversations live together.</p></div><div className="mt-10 grid gap-4 md:grid-cols-3">{features.map(({ icon: Icon, number, title, body }) => <article key={number} className="rounded-2xl border border-[#e9ece9] bg-[#fbfcfb] p-6"><div className="flex items-center justify-between"><span className="flex size-10 items-center justify-center rounded-xl bg-[#eaf0eb] text-[#45624f]"><Icon className="size-[18px]" /></span><span className="text-xs font-medium text-[#9aa39b]">{number}</span></div><h3 className="mt-8 text-base font-semibold tracking-tight">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p></article>)}</div></div></section>
+    <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20"><div className="relative overflow-hidden rounded-[28px] bg-[#e7eee8] px-6 py-10 sm:px-12 sm:py-14"><div aria-hidden="true" className="absolute -right-20 -top-40 size-[430px] rounded-full border border-[#cbd8cd]" /><div aria-hidden="true" className="absolute -right-4 -top-32 size-[330px] rounded-full border border-[#cbd8cd]" /><div className="relative flex flex-col justify-between gap-8 sm:flex-row sm:items-center"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6f8272]">READY WHEN YOU ARE</p><h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">A better way to stay with the lesson.</h2></div><Button asChild size="xl" className="shrink-0 rounded-full bg-[#314f3b] px-6 hover:bg-[#263f2f]"><Link href="/login">Sign in to your class <ArrowRight /></Link></Button></div></div>{!isConfigured() && <div className="mt-6"><SetupNotice /></div>}</section>
+    <footer className="border-t border-black/[0.06] bg-white"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-8"><Link href="/" className="flex items-center gap-2 font-semibold text-[#344a38]"><BookOpenCheck className="size-4" />Lecturely</Link><span>Learn together. Remember more.</span></div></footer>
+  </main>;
+}
+
+function BadgeLine() {
+  return <div className="inline-flex items-center gap-2 rounded-full border border-[#dfe7e0] bg-white/70 px-3 py-1.5 text-[11px] font-medium text-[#5f7563]"><UsersRound className="size-3.5" />A shared space for every class</div>;
 }

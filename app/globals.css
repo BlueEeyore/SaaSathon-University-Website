@@ -9,6 +9,42 @@
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 }
 :root {
+  --background: #ffffff;
+  --foreground: #202a24;
+  --card: #ffffff;
+  --card-foreground: #202a24;
+  --primary: #314f3b;
+  --primary-foreground: #ffffff;
+  --secondary: #edf1ed;
+  --secondary-foreground: #314f3b;
+  --muted: #f3f5f3;
+  --muted-foreground: #707970;
+  --accent: #eaf0eb;
+  --accent-foreground: #314f3b;
+  --destructive: #c73b3b;
+  --border: #e5e9e5;
+  --input: #dce2dc;
+  --ring: #78917e;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+:root {
   --grid-margin: 20px;
   --grid-gutter: 20px;
 }
@@ -69,11 +105,12 @@
 }
 @layer base {
   body {
-    background: white;
-    color: var(--color-black);
+    background: var(--background);
+    color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  * { @apply border-border; }
   :focus-visible {
     outline: 2px solid var(--color-black);
     outline-offset: 4px;

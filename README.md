@@ -1,22 +1,23 @@
-# SaaSathon Starter
+# Lecturely — Lecture Capture
 
-**Start small. Build something that matters.**
+**A shared space for lectures, transcripts, and class discussion.**
 
-A working foundation for SaaSathon teams: Next.js, TypeScript, Supabase and Tailwind. Sign in by email, create an idea, edit it, then delete it. Every account owns its data, enforced by Postgres row-level security.
+Lecturely is a lecture-capture app built with Next.js, TypeScript, Supabase, and shadcn/ui. Lecturers create classes and share a join code; students join their class spaces. Lecture upload, transcription, discussion, and analytics are the next product slices.
 
-[Use this template](https://github.com/justus-lumin/SaaSathon-Template/generate) · [SaaSathon](https://www.saasathon.dev) · [Database migration](supabase/migrations/20260908000000_ideas.sql)
+[SaaSathon](https://www.saasathon.dev) · [Project plan](PLAN.md) · [Session handoff](HANDOFF.md)
 
 ## What you get
 
 - Next.js App Router and React Server Components for reads; Server Actions for writes.
-- Email code sign-in, verified session cookies and protected routes.
-- A complete private ideas workspace with validation, loading, empty, error and pending states.
+- Google OAuth sign-in through Supabase Auth.
+- Lecturer and student class dashboards, lecturer class creation, and student enrollment by join code.
+- Class membership and lecturer permissions enforced by Postgres row-level security and database functions.
 - Accessible labels, keyboard focus, semantic forms and confirmation before deletion.
-- Typed Supabase clients, one migration, explicit grants and four ownership policies.
-- SaaSathon's blue/black/off-white palette, Inter typography and shared Button convention.
+- Typed Supabase clients, explicit grants, row-level security and class access functions.
+- Tailwind v4 and shadcn/ui components with the Lecturely visual theme.
 - A lockfile, CI, a local integration test and Vercel configuration.
 
-There are no billing systems, event credentials or mandatory AI services. This example uses individual ownership; extend the schema deliberately if you need shared team records.
+Google OAuth credentials are configured in Supabase, not in the browser app. Until that provider is enabled, the sign-in button cannot complete authentication.
 
 ## 1. Make a repository
 
@@ -57,7 +58,7 @@ The first start downloads images and applies the migration automatically. Local 
 | Studio      | http://127.0.0.1:55433 |
 | Email inbox | http://127.0.0.1:55434 |
 
-The local email templates already include your sign-in code. No email provider or paid project is needed for local development.
+The local stack provides the database and auth service. Google OAuth needs provider credentials configured in Supabase before sign-in can complete.
 
 To recreate **only this local database** from the migration:
 
@@ -73,7 +74,7 @@ This removes local users and ideas. It explicitly uses `--local`; never run a re
 pnpm dev
 ```
 
-Open [localhost:3000](http://localhost:3000). Choose **Open your workspace**, enter an email and use the code in the [local inbox](http://127.0.0.1:55434). Your first sign-in creates an account. Create an idea, open **Edit idea**, save changes and delete it.
+Open [localhost:3000](http://localhost:3000). Configure Google under Supabase Authentication → Providers and add `http://localhost:3000/auth/callback` to the allowed redirect URLs. Sign in with an allowlisted lecturer email to create classes; other accounts join with a lecturer's 10-character code.
 
 If another app uses port 3000, use `pnpm dev --port 3100`. Never replace an existing dev server. Restart your own app after changing public environment variables.
 
@@ -94,14 +95,14 @@ Use a Supabase project dedicated to **your app**, never the SaaSathon event data
 
    Check the target project before confirming. `db push` applies pending migrations; it does not reset the database.
 
-3. In **Authentication → Email Templates**, set **both Confirm signup and Magic Link** to the content of [`supabase/templates/magic-link.html`](supabase/templates/magic-link.html). Keep `{{ .Token }}` in the email: the app expects a code, not a clickable link. Keep email signup enabled. Set code expiry to 10 minutes if desired.
-4. Configure your approved SMTP provider for public use. Supabase's default email service is restricted and is suitable for initial testing only; see [the SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp). Keep delivery rate limits enabled; consider Supabase CAPTCHA before opening sign-in to an untrusted audience.
+3. In **Authentication → Providers**, enable Google with your Google OAuth client ID and secret. Add `https://YOUR_PROJECT.supabase.co/auth/v1/callback` to Google's authorized redirect URIs, and add your app URL plus `/auth/callback` to Supabase's allowed redirect URLs.
+4. Add lecturer emails to `public.lecturer_allowlist`. Only those accounts receive lecturer access after Google sign-in.
 5. In Vercel, **Add New → Project**, import your repository and choose Next.js. Keep the repository root as the root directory. Select Node.js 22 or newer. `vercel.json` supplies install/build commands.
-6. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to Production. Use a separate test project for Preview when appropriate. Public variables are embedded at build time; redeploy after changing them.
-7. Deploy. Set Supabase's **Authentication → URL Configuration → Site URL** to your deployed HTTPS URL. This starter uses typed email codes and does not need wildcard redirect URLs or an OAuth callback.
-8. Verify on the deployed URL: request a code, sign in, create/edit/delete an idea, sign out, then use a second account and confirm it cannot see the first account's ideas.
+6. Add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_SITE_URL` to Production. Use a separate test project for Preview when appropriate. Public variables are embedded at build time; redeploy after changing them.
+7. Deploy and set Supabase's **Authentication → URL Configuration → Site URL** to the deployed HTTPS URL. Add the deployed `/auth/callback` URL to the allowed redirect URLs.
+8. Verify on the deployed URL: sign in with an allowlisted lecturer, create a class, join as a student with its code, and confirm students cannot create classes.
 
-Vercel supplies HTTPS and deployments from Git. No custom server, cron or extra hosting service is required. A successful build is not proof that hosted email delivery and database permissions work: complete step 8 for your own project.
+Vercel supplies HTTPS and deployments from Git. No custom server, cron or extra hosting service is required. A successful build is not proof that Google OAuth and database permissions work: complete step 8 for your own project.
 
 ## Verify changes
 
@@ -114,7 +115,7 @@ pnpm build
 pnpm test:integration
 ```
 
-The integration test refuses remote Supabase URLs. It creates and cleans up two temporary local users, checks real database CRUD, anonymous denial, cross-account isolation, immutable ownership and database validation. It also builds a production app on a temporary free port and exercises real HTTP form submissions: email code sign-in, cookies, protected pages, create/read/update/delete and sign-out. It never uses an existing dev server or sends real external emails. The local SMTP inbox captures test messages.
+The integration test refuses remote Supabase URLs. It creates and cleans up temporary local users, checks class access rules, and exercises the protected dashboard and class create/join actions over HTTP. OAuth itself requires provider credentials and is configured outside the local test stack.
 
 CI runs the same checks on a fresh Linux runner. Browser interaction and visual QA remain a separate check; the HTTP test does not simulate a browser.
 
@@ -122,13 +123,14 @@ CI runs the same checks on a fresh Linux runner. Browser interaction and visual 
 
 ```text
 app/
-  page.tsx                 Landing page
-  login/                   Email-code actions and sign-in page
-  ideas/                   Protected read, CRUD actions, loading state
+  page.tsx                 Lecturely landing page
+  login/                   Google OAuth sign-in
+  auth/callback/           Supabase OAuth callback
+  classes/                 Protected dashboard and class detail
   error.tsx                Recoverable error boundary
 components/
-  ui/                      Shared Button and field styling
-  idea-form.tsx            Small interactive forms
+  ui/                      shadcn-style shared components
+  class-actions.tsx        Small interactive class forms
 lib/
   auth.ts                  Verified identity for protected actions
   config.ts                Validated public configuration
@@ -158,6 +160,6 @@ The generated Supabase types mirror database columns; database grants still prev
 
 ## Documentation and licences
 
-Implementation references: [Supabase SSR clients](https://supabase.com/docs/guides/auth/server-side/creating-a-client), [row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security), [email OTP](https://supabase.com/docs/guides/auth/auth-email-passwordless), [local CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs).
+Implementation references: [Supabase SSR clients](https://supabase.com/docs/guides/auth/server-side/creating-a-client), [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-login/auth-google), [row-level security](https://supabase.com/docs/guides/auth/row-level-security), [local CLI](https://supabase.com/docs/guides/local-development/cli/getting-started), [Next.js on Vercel](https://vercel.com/docs/frameworks/nextjs).
 
 Code: [MIT](LICENSE). Inter: SIL Open Font License, distributed by Fontsource. See [third-party notices](THIRD_PARTY_NOTICES.md). The commercial ABC Camera typeface and Lumin artwork are intentionally not distributed with this template.

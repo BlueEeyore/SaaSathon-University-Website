@@ -195,29 +195,26 @@ async function main() {
     ok("the creator can read their new class immediately");
     ok("a class can only be created with yourself as lecturer, and never ownerless");
 
-    // T8: there is no path to a class lectured by somebody else. create_class
-    // always uses the caller, and a direct insert is not granted at all.
+    // T8: class creation is reserved for accounts promoted by the private
+    // allowlist path. The public function is directly callable by any user.
     const { error: forgeError } = await clients.a.rpc("create_class", {
       class_title: "A's own class",
     });
-    assert.equal(forgeError, null);
+    assert.ok(forgeError, "a student must not create a class through the RPC");
     const { data: aClass } = await admin
       .from("classes")
       .select("lecturer_id")
       .eq("title", "A's own class")
-      .single();
-    assert.ok(aClass, "a should have created a class");
-    assert.equal(aClass.lecturer_id, ids.a, "the creator is always the lecturer");
-    // A student is still a valid account; the allowlist only gates who the
-    // platform calls a lecturer, not who may run their own class.
+      .maybeSingle();
+    assert.equal(aClass, null, "refused creation must not leave a class behind");
     const { data: aPromoted } = await clients.a
       .from("profiles")
       .select("role")
       .eq("user_id", ids.a)
       .single();
     assert.ok(aPromoted, "profile should exist");
-    assert.equal(aPromoted.role, "student", "creating a class must not promote anyone");
-    ok("a class is always created with the caller as lecturer, and grants no role");
+    assert.equal(aPromoted.role, "student", "the failed call must not promote anyone");
+    ok("only an allowlisted lecturer can create a class through the RPC");
 
     // T9
     const { data: beforeJoin } = await clients.a
@@ -388,6 +385,7 @@ async function main() {
     for (const line of passes) void line;
     console.log(`\nPASS: ${passes.length} identity/RLS invariants hold`);
   } finally {
+    await admin.from("lecturer_allowlist").delete().in("email", Object.values(emails));
     for (const id of Object.values(ids)) await admin.auth.admin.deleteUser(id);
   }
 }

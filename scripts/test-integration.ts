@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { once } from "node:events";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { load } from "cheerio";
 
@@ -35,6 +36,7 @@ async function main() {
   const bob = publicClient();
   const anonymous = publicClient();
   const userIds: string[] = [];
+  const passwords = new Map<string, string>();
   const run = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const aliceEmail = `alice-${run}@example.test`;
   const bobEmail = `bob-${run}@example.test`;
@@ -45,6 +47,7 @@ async function main() {
       [bob, bobEmail],
     ] as const) {
       const password = `local-only-${run}-Password1!`;
+      passwords.set(email, password);
       const { data, error } = await admin.auth.admin.createUser({
         email,
         password,
@@ -57,6 +60,8 @@ async function main() {
         null,
       );
     }
+    assert.equal((await admin.from("lecturer_allowlist").insert({ email: aliceEmail })).error, null);
+    assert.equal((await alice.rpc("claim_lecturer_role")).data, true);
     const { data: record, error } = await alice
       .from("ideas")
       .insert({
@@ -224,116 +229,52 @@ async function main() {
       for (const [name, value] of Object.entries(fields)) body.set(name, value);
       return request(path, { method: "POST", body });
     }
-    let response = await request("/ideas");
+    let response = await request("/classes");
     assert.equal(response.status, 307);
     assert.equal(response.headers.get("location"), "/login");
     const login = await (await request("/login")).text();
-    response = await submit("/login", login, "form", { email: aliceEmail });
-    const sentHtml = await response.text();
-    assert.ok(
-      sentHtml.includes("Check your email"),
-      "OTP request succeeds through the real Server Action",
-    );
-    const inbox = local.MAILPIT_URL || local.INBUCKET_URL;
-    async function getCode(email: string) {
-      let code = "";
-      for (let attempt = 0; attempt < 30 && !code; attempt++) {
-        const messages = await (await fetch(`${inbox}/api/v1/messages`)).json();
-        const message = messages.messages?.find(
-          (item: { To: { Address: string }[] }) =>
-            item.To.some((to) => to.Address === email),
-        );
-        if (message) {
-          const body = await (
-            await fetch(`${inbox}/api/v1/message/${message.ID}`)
-          ).json();
-          code = String(body.Text || body.HTML).match(/\b\d{6}\b/)?.[0] ?? "";
-        }
-        if (!code) await new Promise((resolve) => setTimeout(resolve, 200));
-      }
-      assert.ok(code, "Sign-in email contains a code");
-      return code;
+    assert.ok(login.includes("Continue with Google"), "Google OAuth is the sign-in path");
+
+    async function signInFor(email: string) {
+      cookies.clear();
+      const sessionClient = createServerClient(local.API_URL, key, {
+        cookies: {
+          getAll: () => [...cookies].map(([name, value]) => ({ name, value })),
+          setAll(values) {
+            values.forEach(({ name, value }) => cookies.set(name, value));
+          },
+        },
+      });
+      const password = passwords.get(email)!;
+      assert.equal((await sessionClient.auth.signInWithPassword({ email, password })).error, null);
     }
-    const code = await getCode(aliceEmail);
-    response = await submit(
-      "/login",
-      sentHtml,
-      'form:has(input[name="code"])',
-      { email: aliceEmail, code },
-    );
-    assert.equal(response.status, 303);
-    assert.equal(response.headers.get("location"), "/ideas");
-    let html = await (await request("/ideas")).text();
-    assert.ok(html.includes("A blank page."));
-    response = await submit("/ideas", html, 'form:has(input[name="title"])', {
-      title: "HTTP workflow idea",
-      description: "Saved through a server action",
+
+    await signInFor(aliceEmail);
+    let html = await (await request("/classes")).text();
+    assert.ok(html.includes("Create a class"));
+    response = await submit("/classes", html, 'form:has(input[name="title"])', {
+      title: "HTTP Workflow Class",
+      description: "Created through the lecturer action",
     });
-    html = await response.text();
-    assert.ok(html.includes("Idea added."));
-    html = await (await request("/ideas")).text();
-    assert.ok(html.includes("HTTP workflow idea"));
-    const { data: saved } = await alice
-      .from("ideas")
-      .select()
-      .eq("title", "HTTP workflow idea")
-      .single();
-    assert.ok(saved);
-    response = await submit(
-      "/ideas",
-      html,
-      `form:has(input[name="id"][value="${saved.id}"]):has(input[name="title"])`,
-      { id: saved.id, title: "HTTP workflow edited", description: "Updated" },
-    );
-    assert.ok((await response.text()).includes("Changes saved."));
-    html = await (await request("/ideas")).text();
-    assert.ok(html.includes("HTTP workflow edited"));
-    response = await submit(
-      "/ideas",
-      html,
-      `form:has(input[name="id"][value="${saved.id}"]):not(:has(input[name="title"]))`,
-      { id: saved.id },
-    );
-    assert.ok(response.ok);
-    assert.equal(
-      (await alice.from("ideas").select().eq("id", saved.id)).data?.length,
-      0,
-    );
-    html = await (await request("/ideas")).text();
-    response = await submit("/ideas", html, "header form", {});
     assert.equal(response.status, 303);
-    assert.equal((await request("/ideas")).headers.get("location"), "/login");
-    const newcomerEmail = `new-${run}@example.test`;
-    const signupHtml = await (
-      await submit("/login", await (await request("/login")).text(), "form", {
-        email: newcomerEmail,
-      })
-    ).text();
-    const { data: registered } = await admin.auth.admin.listUsers();
-    const newcomer = registered.users.find(
-      (user) => user.email === newcomerEmail,
-    );
-    assert.ok(newcomer, "First sign-in registers an account");
-    userIds.push(newcomer.id);
-    const signupCode = await getCode(newcomerEmail);
-    const verifiedSignup = await submit(
-      "/login",
-      signupHtml,
-      'form:has(input[name="code"])',
-      { email: newcomerEmail, code: signupCode },
-    );
-    assert.equal(verifiedSignup.status, 303);
-    assert.ok(
-      (await (await request("/ideas")).text()).includes("A blank page."),
-    );
-    console.log(
-      "PASS: first-time email-code signup and empty private workspace",
-    );
-    console.log(
-      "PASS: production HTTP sign-in email/code, session cookies, protected route, empty state, create/read/update/delete and sign-out",
-    );
+    const { data: httpClass } = await admin.from("classes").select("id, join_code").eq("title", "HTTP Workflow Class").single();
+    assert.ok(httpClass);
+    html = await (await request(`/classes/${httpClass.id}`)).text();
+    assert.ok(html.includes("Invite students"));
+    assert.ok(html.includes(httpClass.join_code.slice(0, 5)));
+
+    await signInFor(bobEmail);
+    html = await (await request("/classes")).text();
+    assert.ok(html.includes("Join a class"));
+    response = await submit("/classes", html, 'form:has(input[name="code"])', { code: httpClass.join_code });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get("location"), `/classes/${httpClass.id}`);
+    html = await (await request(`/classes/${httpClass.id}`)).text();
+    assert.ok(html.includes("Lecture library"));
+    console.log("PASS: Google sign-in entry, protected classes, lecturer create, join-code sharing, and student enrollment");
   } finally {
     server?.kill("SIGTERM");
+    await admin.from("lecturer_allowlist").delete().eq("email", aliceEmail);
     for (const id of userIds) await admin.auth.admin.deleteUser(id);
   }
 }

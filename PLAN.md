@@ -3,7 +3,7 @@
 Supersedes the original feature sketch. Feature *intent* is preserved in "Product scope";
 everything under "Decisions" is settled and should not be re-litigated during implementation.
 
-Status: **reviewed, not started.** Open items in "Before we build" must be closed first.
+Status: **in progress.** Foundations and the identity database are built. The first class UI slice is implemented; upload and transcription remain ahead.
 
 ---
 
@@ -52,9 +52,9 @@ demo day, and deferring them keeps the demo spine buildable.
 | AI | OpenAI API, server-side key only. Never a `NEXT_PUBLIC_` variable. |
 | Transcriber swap | `Transcriber` interface with a mock implementation. Satisfies "easy to switch transcriber" and keeps tests hermetic. |
 | Moodle | `LmsProvider` interface + `lms_external_id` columns now; real integration later. Embeddable player built in Phase 2. |
-| Roles | One global role per user (`student` or `lecturer`). Lecturer signup requires an email allowlist. |
+| Roles | One global role per user (`student` or `lecturer`). Lecturer access requires an email allowlist. |
 | Enrollment | Both paths ship. **Join code is the demo path and is built first.** CSV roster import follows. Per-student invite links are out of scope. |
-| Sign-in | Keep email-code OTP. Add a demo-only quick login, off unless explicitly enabled. |
+| Sign-in | Google OAuth through Supabase Auth. The owner will configure the Google provider and redirect URLs later. |
 | Comments | Anchor to a highlight **or** a timestamp range. Visible to everyone in the class. |
 | Transcript | Segment rows (~5–15s) with a word-level JSONB array per segment. One read renders a transcript. |
 | Captions | Generated WebVTT served from Storage, rendered by native `<track>`. No custom caption component. |
@@ -71,7 +71,7 @@ These are verification steps, not features. Each one can invalidate a decision a
 1. ~~**Verify Supabase Cloud free-tier limits.**~~ **DONE.** Verified: 50 MB max upload, 5 GB egress,
    1 GB storage, 500 MB database, 2 free projects, paused after 1 week idle. Consequences folded
    into "Why not Supabase Storage".
-2. **Benchmark `faster-whisper` on the demo machine.** In progress. Determines the demo clip length
+2. ~~**Benchmark `faster-whisper` on the demo machine.**~~ **DONE.** Determines the demo clip length
    cap and which model is viable. Results recorded in `workers/whisper/BENCHMARK.md`.
 3. ~~**Confirm the VPS has swap enabled.**~~ No longer applicable — the demo runs on the app host.
    Swap is only needed if this later moves to a 2GB VPS.
@@ -83,9 +83,9 @@ These are verification steps, not features. Each one can invalidate a decision a
    fine for a seed, but not for anything you transcribe on demo day.
 6. **Choose the OpenAI model for Phase 2.** Not needed for the demo spine, so it can wait, but the
    cost difference between a small and a large model is worth a decision rather than a default.
-7. **Create the Supabase Cloud project.** Needs your account. Apply the migration, set both email
-   templates to `supabase/templates/magic-link.html`, and confirm the Site URL. Until this exists
-   there is no hosted database to deploy to.
+7. **Create the Supabase Cloud project.** Needs your account. Apply the migrations, configure
+   Google OAuth and its redirect URLs, then confirm the Site URL. Until this exists there is no
+   hosted database to deploy to.
 
 ---
 
@@ -196,11 +196,9 @@ codes. A short numeric code is not acceptable.
 cannot write straight into `class_members` — that column references `auth.users`, which does not
 exist for an unregistered email. It gets its own table, `class_roster`, and the same table also
 backs the single-address "add a student by email" control. Rows are **claimed on first sign-in**:
-when a user completes the OTP flow, every unclaimed roster row matching their verified email
+after Google OAuth returns a verified session, every unclaimed roster row matching the verified email
 becomes a `class_members` row.
 
-This is the same mechanism a future Moodle sync would push into, which is why it is worth doing
-now rather than as a throwaway CSV parser.
 
 *Assumption to confirm:* a roster row for an email that never signs in stays unclaimed and is
 counted as "pending" in the roster UI, not as a class member. It should not appear in the student
@@ -256,32 +254,29 @@ feature over layers of abstractions.
 - Supabase free-tier limits verified. **DONE** — see "Why not Supabase Storage".
 - **No Supabase Storage work needed.** The local stack's `[storage] enabled = false` stays as it
   is; video is served from local disk instead. One less thing to configure.
-- Add new env vars to `.env.example` with public placeholders only: media root path, transcriber
-  endpoint, lecturer allowlist, demo-login flag, OpenAI key.
+- Add new env vars to `.env.example` with public placeholders only: site URL, media root path,
+  transcriber endpoint, lecturer allowlist, OpenAI key.
 - Extend `lib/validation.ts` with schemas for classes, lectures, highlights, comments, events.
 - App host setup: Node 22, Python 3.12, ffmpeg (both already present here). Add
   `output: "standalone"` to `next.config.ts` so the Node server runs without bundling
   `node_modules`. Caddy with automatic HTTPS only when a public URL is wanted.
 - A media directory outside the repo (gitignored) for source and normalised video, plus a cleanup
   job so the demo host does not fill its disk.
-- Restructure the integration test so it is not coupled to the `/ideas` demo. It currently asserts
-  exact strings (`"A blank page."`, `"Idea added."`) and that `/ideas` 307s to `/login`. Building
-  the real app breaks it, and CI runs it.
-- Demo accounts: a seed script creating one lecturer and a handful of students, with passwords set
-  server-side so the quick-login path has real credentials to use. Must be idempotent and must
-  refuse to run against a production database.
+- The HTTP integration test now exercises the class flow instead of the `/ideas` demo. OAuth itself
+  needs provider credentials and is verified during owner setup.
+- Demo accounts: a seed script creating one lecturer and a handful of students. Must be idempotent
+  and must refuse to run against a production database.
 
 ### Phase 1 — Identity and classes
 
 - Migration: `profiles`, `classes`, `class_members`, `class_roster`, the three helper functions.
-- Role chosen at signup; lecturer path checks the allowlist env var.
+- New accounts start as students. The verified Google callback claims lecturer access only when
+  the authenticated email appears in the database allowlist.
 - Lecturer creates/edits a class and shares a join code.
 - Student signs up and joins with a code. **This is the demo path — build and verify it first.**
 - Lecturer can add a single student by email, writing to `class_roster`.
 - Roster claiming on sign-in: matching unclaimed rows become `class_members` rows, using the
   verified session email only.
-- Demo quick login: env-gated, default off, server-side real password auth (not an auth bypass),
-  loud startup warning when enabled, and a test asserting it stays off when unset.
 - `LmsProvider` interface and `lms_external_id` columns.
 
 ### Phase 2 — Upload, transcription, player

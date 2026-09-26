@@ -1,35 +1,79 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LoginForm } from "@/components/login-form";
-import { SetupNotice } from "@/components/setup-notice";
+import { ArrowLeft, BookOpenCheck, Captions, MessageSquareText, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { signInWithGoogle } from "@/app/login/actions";
 import { isConfigured } from "@/lib/config";
 import { createClient } from "@/lib/supabase/server";
+
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Sign in" };
-export default async function LoginPage() {
+
+const features = [
+  { icon: Captions, label: "Follow a lecture with live transcripts" },
+  { icon: MessageSquareText, label: "Share questions at the exact moment" },
+  { icon: BookOpenCheck, label: "Keep every class in one place" },
+];
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const configured = isConfigured();
   if (configured) {
     const supabase = await createClient();
     const { data } = await supabase.auth.getClaims();
-    if (data?.claims.sub) redirect("/ideas");
+    if (data?.claims.sub) redirect("/classes");
   }
+  const params = await searchParams;
   return (
-    <main
-      id="main"
-      className="grid-container flex min-h-screen flex-col bg-blue py-6"
-    >
-      <Link href="/" className="w-fit font-semibold">
-        SaaSathon / Starter
-      </Link>
-      <div className="mx-auto my-auto w-full max-w-md py-16">
-        <p className="text-body-2 mb-4">YOUR NEXT IDEA</p>
-        <h1 className="text-h2 mb-4">Let’s get started.</h1>
-        <p className="mb-8 text-sm leading-6">
-          We’ll email you a code. Your first sign-in creates your account.
-        </p>
-        {configured ? <LoginForm /> : <SetupNotice />}
+    <main id="main" className="min-h-screen bg-[#f7f8fa]">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8">
+        <Link href="/" className="flex items-center gap-2.5 font-semibold tracking-tight">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-[#283d32] text-white"><Play className="size-4 fill-current" /></span>
+          Lecturely
+        </Link>
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Back to home</Link>
+      </header>
+      <div className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl items-center gap-12 px-5 pb-12 pt-4 sm:px-8 lg:grid-cols-[1fr_0.85fr] lg:gap-20">
+        <section className="hidden lg:block">
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-[#5c7866]">LEARN IN CONTEXT</p>
+          <h1 className="max-w-xl text-5xl font-semibold leading-[1.06] tracking-[-0.05em] text-[#202a24] xl:text-6xl">Every lecture,<br />a little clearer.</h1>
+          <p className="mt-6 max-w-lg text-lg leading-8 text-muted-foreground">Watch, read, and discuss your course material in one calm space built for learning.</p>
+          <div className="mt-12 space-y-5">
+            {features.map(({ icon: Icon, label }) => <div key={label} className="flex items-center gap-3 text-sm font-medium text-[#45524a]"><span className="flex size-9 items-center justify-center rounded-xl bg-[#e9eee9] text-[#45624f]"><Icon className="size-4" /></span>{label}</div>)}
+          </div>
+          <div className="relative mt-14 max-w-xl overflow-hidden rounded-[28px] bg-[#dfe8e1] p-8">
+            <div className="absolute -right-10 -top-16 size-64 rounded-full border-[1px] border-[#b8cabb]" />
+            <div className="absolute -right-2 -top-8 size-48 rounded-full border-[1px] border-[#b8cabb]" />
+            <div className="relative flex items-end justify-between">
+              <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#63786a]">YOUR COURSE SPACE</p><p className="mt-2 text-xl font-semibold tracking-tight text-[#26362b]">Learn at your own pace.</p></div>
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/80 text-[#45624f]"><BookOpenCheck className="size-5" /></div>
+            </div>
+          </div>
+        </section>
+        <section className="mx-auto w-full max-w-md rounded-[28px] border border-black/[0.06] bg-white p-7 shadow-[0_20px_70px_-35px_rgba(23,42,30,0.22)] sm:p-10">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-[#eaf0eb] text-[#45624f]"><BookOpenCheck className="size-5" /></span>
+          <h2 className="mt-7 text-2xl font-semibold tracking-tight">Welcome to Lecturely</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Sign in with your university Google account to continue.</p>
+          {configured ? (
+            <form action={signInWithGoogle} className="mt-8">
+              <Button type="submit" variant="outline" size="xl" className="w-full rounded-xl border-[#dfe3df] font-semibold shadow-none hover:bg-[#f7f8f7]">
+                <GoogleMark /> Continue with Google
+              </Button>
+              {params.error && <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">Google sign-in could not start. Check that Google is enabled in your Supabase authentication settings, then try again.</p>}
+            </form>
+          ) : (
+            <div className="mt-8 rounded-2xl border border-dashed border-[#d8ded9] bg-[#f8faf8] p-4 text-sm leading-6 text-muted-foreground">Add the Supabase URL and publishable key to connect authentication. Google sign-in can be enabled in Supabase when you are ready.</div>
+          )}
+          <p className="mt-7 text-center text-xs leading-5 text-muted-foreground">Your course account is managed by your university. Ask your lecturer if you need access to a class.</p>
+        </section>
       </div>
-      <p className="text-sm">A little less setup. A lot more building.</p>
     </main>
   );
+}
+
+function GoogleMark() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className="size-[18px]"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.09-1.92 3.27-4.75 3.27-8.1Z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.65l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.15v2.84A11 11 0 0 0 12 23Z"/><path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.11V7.05H2.15A11 11 0 0 0 1 12c0 1.78.43 3.46 1.15 4.95l3.69-2.84Z"/><path fill="#EA4335" d="M12 5.36c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1a11 11 0 0 0-9.85 6.05l3.69 2.84C6.71 7.29 9.14 5.36 12 5.36Z"/></svg>;
 }
