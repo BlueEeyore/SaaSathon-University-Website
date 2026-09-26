@@ -38,14 +38,17 @@ text.
 | Model | Audio | Time | Realtime factor | Peak RSS | Segments | Words |
 |---|---|---|---|---|---|---|
 | `base` | 601s | 147s | **4.1x** | 890 MB | 71 | 1291 |
-| `small` | 601s | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ |
+| `small` | 601s | 333s | 1.8x | 1727 MB | 91 | 1303 |
 
-Model load was 50s on first run for `base` (a one-off, cached afterwards).
+Model load was 50s (`base`) and 42s (`small`) on first run — a one-off, cached afterwards.
 
-Every segment carried word-level timings (71 of 71), and language detection
-returned `en` at p=1.00.
+Every segment carried word-level timings in both runs (71/71 and 91/91), and language detection
+returned `en` at p=1.00 for both.
 
-## Accuracy spot check
+`small` also segments more finely (91 segments vs 71 for identical audio), which suits a
+follow-along transcript better.
+
+## Accuracy
 
 `base` on the JFK clip, against known text:
 
@@ -56,20 +59,52 @@ got:      And so my fellow Americans ask not what your country can do for you, a
 
 Exact match, with per-word timings precise to ~0.1s (`Americans` 1.56 → 2.10).
 
+On the 10-minute sample the two models differ visibly in the same passage:
+
+| `base` | `small` |
+|---|---|
+| "the **squallad** quarter of the brothels" | "the **squalid** quarter of the brothels" |
+| "flour-fatten sauce" | "flour-fattened sauce" |
+| "some **basic** and legendary rumours were put down" | "in the half-summerged branches revolved some birds of chimeric and legendary plumage" |
+
+The first two are clear corrections. The third is a different kind of error in both — the sample
+repeats short unrelated clips, which produces unnatural transitions and confuses both models. Treat
+that row as noise rather than evidence, but the first two are real.
+
+## Model choice
+
+**Use `small` for anything pre-transcribed, `base` for live or on-demand.**
+
+`small` is meaningfully more accurate and the recorded demo lecture will be transcribed ahead of
+time, so there is no reason to accept `base`'s errors for it. It costs 2.3x the time and roughly
+doubles peak memory.
+
+`base` stays the default for any transcription a user waits on, because 4.1x realtime means a
+15-minute lecture finishes in 3.7 minutes, while `small` would take 8.3 — too slow to sit through
+and, at 1.8x, no longer comfortable to do on stage.
+
+The model is therefore per-job and configurable via `TRANSCRIBER_MODEL`, defaulting to `small`
+for seeded content.
+
 ## Consequences for the plan
 
-1. **Live transcription is viable.** 4.1x realtime means a 15-minute lecture
-   finishes in roughly 3.7 minutes. The plan had assumed the host was too slow
-   to transcribe on stage; that assumption was wrong and has been corrected.
-2. **Still pre-transcribe by default.** A 4x margin is not much on a slower
-   machine or a longer lecture, and a failed live transcription during a demo is
-   unrecoverable. Live becomes a credible fallback, not the primary path.
-3. **`base` is the default model.** `small` should be preferred for the recorded
-   demo lecture if its accuracy gain is worth the time cost — decide from the
-   numbers above once measured.
-4. **Memory is not a constraint here.** 890 MB peak leaves plenty of headroom
-   alongside Next.js. This only becomes a risk if the project later moves to a
-   2GB VPS, where `base` would be the floor and `small` likely infeasible.
+1. **Live transcription is viable, with `base`.** 4.1x realtime means a 15-minute lecture finishes
+   in roughly 3.7 minutes. The plan had assumed the host was too slow to transcribe on stage; that
+   assumption was wrong and has been corrected.
+2. **Still pre-transcribe by default.** A failed live transcription during a demo is unrecoverable.
+   Live is a credible fallback, not the primary path.
+3. **Memory is not a constraint on this host** — 1727 MB peak leaves ample headroom beside
+   Next.js. It becomes a real constraint only if the project moves to a 2GB VPS, where `base`
+   (~890 MB) is the ceiling and `small` would not fit.
+4. **Word-level timings are confirmed viable** on both models, which was the main technical risk
+   behind the follow-along player and jump-to-highlight features.
+
+## Caveat
+
+The audio is synthetic (concatenated repeats), not a real lecture recording. Re-run the benchmark
+against the actual recorded lecture before trusting the extrapolation, since real lectures contain
+longer pauses, more varied acoustics and no unnatural clip-to-clip transitions.
+
 
 ## Caveat
 

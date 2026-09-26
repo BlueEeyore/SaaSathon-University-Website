@@ -46,9 +46,9 @@ demo day, and deferring them keeps the demo spine buildable.
 | Reverse proxy | Caddy with automatic HTTPS, in front of Next.js. Optional for a LAN demo. |
 | Database / auth | Supabase Cloud free tier. Local Supabase stack stays for development and tests. |
 | **Video storage** | **Local disk on the app host, not Supabase Storage.** See "Why not Supabase Storage". |
-| CPU | Demo host: 8 threads (Intel i5-8365U, 1.6GHz), 15GB RAM, ffmpeg and Python 3.12 present. |
-| Transcription | Self-hosted `faster-whisper` (CTranslate2, int8) on the app host. `base` model by default, configurable. |
-| Transcription timing | **Pre-transcribed.** A CPU-only box cannot transcribe live at demo speed. |
+| CPU | Demo host: 8 threads (Intel i5-8365U, 1.6GHz), 15GB RAM, ffmpeg and Python 3.12 present. Measured: `base` 4.1x realtime / 890MB, `small` 1.8x / 1727MB. See `workers/whisper/BENCHMARK.md`. |
+| Transcription | Self-hosted `faster-whisper` (CTranslate2, int8) on the app host. `small` for pre-transcribed content, `base` for live, configurable per job. |
+| Transcription timing | **Pre-transcribed by default.** Measured 4.1x realtime for `base`, so live is a viable fallback but never the primary path. |
 | AI | OpenAI API, server-side key only. Never a `NEXT_PUBLIC_` variable. |
 | Transcriber swap | `Transcriber` interface with a mock implementation. Satisfies "easy to switch transcriber" and keeps tests hermetic. |
 | Moodle | `LmsProvider` interface + `lms_external_id` columns now; real integration later. Embeddable player built in Phase 2. |
@@ -341,6 +341,7 @@ built in Phase 1, so this phase is only the upload-and-parse UI), AI overview, c
 | Risk | Impact | Mitigation |
 |---|---|---|
 | App host disk fills with video | Upload or playback fails mid-demo | Delete the source file after normalisation; keep only the normalised copy; scheduled cleanup |
+| `small` model too slow or too large on a smaller host | Live transcription stalls, or OOM | `small` is for pre-transcribed content only; `base` is the live/small-host fallback and fits in ~890MB |
 | Supabase free tier pauses an inactive project | Total failure on demo day | Daily authenticated request from the app host; check project activity shortly before the demo |
 | Transcription slower than hoped | Demo stalls | Pre-transcribe and seed; never transcribe live |
 | Video scrubbing stutters | Feels broken on a projector | Normalise to 720p and a modest bitrate in the worker; verify range requests work before the demo |
