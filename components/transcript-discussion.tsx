@@ -143,10 +143,21 @@ export function TranscriptDiscussion({
 
   useEffect(() => {
     if (activeIndex < 0) return;
-    transcriptRef.current?.querySelector(`[data-segment-index="${activeIndex}"]`)?.scrollIntoView({
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const container = transcriptRef.current;
+    const segment = container?.querySelector<HTMLElement>(`[data-segment-index="${activeIndex}"]`);
+    if (!container || !segment) return;
+
+    // scrollIntoView can scroll the document as well as this panel, moving the
+    // video off screen. Adjust only the transcript panel's own scroll position.
+    const containerRect = container.getBoundingClientRect();
+    const segmentRect = segment.getBoundingClientRect();
+    const visibleTop = containerRect.top + container.clientTop;
+    const visibleBottom = visibleTop + container.clientHeight;
+    if (segmentRect.top < visibleTop) {
+      container.scrollTo({ top: container.scrollTop + segmentRect.top - visibleTop, behavior: "smooth" });
+    } else if (segmentRect.bottom > visibleBottom) {
+      container.scrollTo({ top: container.scrollTop + segmentRect.bottom - visibleBottom, behavior: "smooth" });
+    }
   }, [activeIndex]);
 
   return <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
